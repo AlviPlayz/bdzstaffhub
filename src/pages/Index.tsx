@@ -1,6 +1,5 @@
 
 import React from 'react';
-import { useAuth } from '@/contexts/AuthContext';
 import Navbar from '@/components/Navbar';
 import CyberBackground from '@/components/CyberBackground';
 import Dashboard from '@/pages/Dashboard';

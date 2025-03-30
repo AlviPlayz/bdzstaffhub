@@ -5,27 +5,19 @@ import { User, Search, Check, X } from 'lucide-react';
 import { StaffMember } from '@/types/staff';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
-import AdminAccessModal from '@/components/AdminAccessModal';
 import LoadingState from '@/components/LoadingState';
+import { useNavigate } from 'react-router-dom';
 
 const AdminPage: React.FC = () => {
   const { isAdmin } = useAuth();
   const { allStaff, updateStaffMember } = useStaff();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStaff, setSelectedStaff] = useState<StaffMember | null>(null);
-  const [showAdminModal, setShowAdminModal] = useState(!isAdmin);
+  const navigate = useNavigate();
   
-  if (showAdminModal) {
-    return (
-      <AdminAccessModal 
-        isOpen={true}
-        onClose={() => window.location.href = '/'}
-        onSuccess={() => setShowAdminModal(false)}
-      />
-    );
-  }
-  
+  // Redirect non-admin users back to the homepage
   if (!isAdmin) {
+    navigate('/');
     return <LoadingState />;
   }
   

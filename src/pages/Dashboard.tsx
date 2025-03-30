@@ -1,16 +1,47 @@
-
 import React from 'react';
 import { useStaff } from '@/contexts/StaffContext';
 import StaffCard from '@/components/StaffCard';
 import { BarChart3, Shield, Hammer, Trophy } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import LoadingState from '@/components/LoadingState';
 
 const Dashboard: React.FC = () => {
-  const { moderators, builders, managers } = useStaff();
+  const { moderators, builders, managers, loading, error } = useStaff();
   
   // Get top performers from each category
   const topModerator = [...moderators].sort((a, b) => b.overallScore - a.overallScore)[0];
   const topBuilder = [...builders].sort((a, b) => b.overallScore - a.overallScore)[0];
+  
+  if (loading) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="mb-8">
+          <h1 className="text-3xl font-digital text-white mb-2">
+            <span className="text-cyber-cyan cyber-text-glow">BDZ</span> STAFF DASHBOARD
+          </h1>
+          <p className="text-white/60 font-cyber">Real-time performance metrics and staff rankings</p>
+        </div>
+        <LoadingState />
+      </div>
+    );
+  }
+  
+  if (error) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="mb-8">
+          <h1 className="text-3xl font-digital text-white mb-2">
+            <span className="text-cyber-cyan cyber-text-glow">BDZ</span> STAFF DASHBOARD
+          </h1>
+          <p className="text-white/60 font-cyber">Real-time performance metrics and staff rankings</p>
+        </div>
+        <div className="cyber-panel text-center py-12">
+          <p className="text-red-500 font-digital text-xl mb-2">DATABASE CONNECTION ERROR</p>
+          <p className="text-white/60 font-cyber">Failed to load staff data. Please try again later.</p>
+        </div>
+      </div>
+    );
+  }
   
   return (
     <div className="container mx-auto px-4 py-8">

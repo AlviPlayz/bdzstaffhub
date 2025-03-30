@@ -1,7 +1,7 @@
 
-export type StaffRole = 'Moderator' | 'Builder' | 'Manager';
+export type StaffRole = 'Moderator' | 'Builder' | 'Manager' | 'Owner';
 
-export type LetterGrade = 'S+' | 'S' | 'A+' | 'A' | 'B+' | 'B' | 'C' | 'D' | 'E' | 'E-' | 'SSS+';
+export type LetterGrade = 'S+' | 'S' | 'A+' | 'A' | 'B+' | 'B' | 'C' | 'D' | 'E' | 'E-' | 'SSS+' | 'Immeasurable';
 
 export interface PerformanceMetric {
   id: string;
@@ -38,12 +38,14 @@ export interface BuilderMetrics {
 
 export type ManagerMetrics = ModeratorMetrics & BuilderMetrics;
 
+export type OwnerMetrics = ManagerMetrics;
+
 export interface StaffMember {
   id: string;
   name: string;
   role: StaffRole;
   avatar: string;
-  metrics: ModeratorMetrics | BuilderMetrics | ManagerMetrics;
+  metrics: ModeratorMetrics | BuilderMetrics | ManagerMetrics | OwnerMetrics;
   overallScore: number;
   overallGrade: LetterGrade;
 }

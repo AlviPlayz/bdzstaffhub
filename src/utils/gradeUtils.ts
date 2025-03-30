@@ -29,6 +29,7 @@ export const calculateOverallGrade = (metrics: Record<string, PerformanceMetric>
 
 export const getGradeColorClass = (grade: LetterGrade): string => {
   switch(grade) {
+    case 'Immeasurable': return 'grade-immeasurable';
     case 'SSS+': return 'grade-sss';
     case 'S+': return 'grade-splus';
     case 'S': return 'grade-s';
@@ -42,4 +43,40 @@ export const getGradeColorClass = (grade: LetterGrade): string => {
     case 'E-': return 'grade-eminus';
     default: return 'grade-c';
   }
+};
+
+// Helper function to create an "Immeasurable" performance metric
+export const createImmeasurableMetric = (name: string): PerformanceMetric => {
+  return {
+    id: name.toLowerCase().replace(/\s+/g, '-'),
+    name,
+    score: 10, // We'll give it a 10 score for calculation purposes
+    letterGrade: 'Immeasurable'
+  };
+};
+
+// Create a set of Immeasurable metrics for Owner or high-level manager
+export const createImmeasurableManagerMetrics = (): Record<string, PerformanceMetric> => {
+  return {
+    // Moderator metrics
+    responsiveness: createImmeasurableMetric('Responsiveness'),
+    fairness: createImmeasurableMetric('Fairness'),
+    communication: createImmeasurableMetric('Communication'),
+    conflictResolution: createImmeasurableMetric('Conflict Resolution'),
+    ruleEnforcement: createImmeasurableMetric('Rule Enforcement'),
+    engagement: createImmeasurableMetric('Engagement'),
+    supportiveness: createImmeasurableMetric('Supportiveness'),
+    adaptability: createImmeasurableMetric('Adaptability'),
+    objectivity: createImmeasurableMetric('Objectivity'),
+    initiative: createImmeasurableMetric('Initiative'),
+    // Builder metrics
+    exterior: createImmeasurableMetric('Exterior'),
+    interior: createImmeasurableMetric('Interior'),
+    decoration: createImmeasurableMetric('Decoration'),
+    effort: createImmeasurableMetric('Effort'),
+    contribution: createImmeasurableMetric('Contribution'),
+    cooperativeness: createImmeasurableMetric('Cooperativeness'),
+    creativity: createImmeasurableMetric('Creativity'),
+    consistency: createImmeasurableMetric('Consistency')
+  };
 };

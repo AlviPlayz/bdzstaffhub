@@ -1,7 +1,7 @@
 
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { StaffMember, StaffRole } from '@/types/staff';
-import { allModerators, allBuilders, allManagers, processStaffData } from '@/data/mockStaffData';
+import { supabaseService } from '@/services/supabaseService';
 import { toast } from '@/hooks/use-toast';
 
 interface StaffContextType {
@@ -9,9 +9,12 @@ interface StaffContextType {
   builders: StaffMember[];
   managers: StaffMember[];
   allStaff: StaffMember[];
-  updateStaffMember: (updatedMember: StaffMember) => void;
-  addStaffMember: (newMember: Omit<StaffMember, 'id'>) => void;
-  removeStaffMember: (id: string) => void;
+  loading: boolean;
+  error: Error | null;
+  updateStaffMember: (updatedMember: StaffMember) => Promise<void>;
+  addStaffMember: (newMember: Omit<StaffMember, 'id'>) => Promise<void>;
+  removeStaffMember: (id: string, role: StaffRole) => Promise<void>;
+  refreshStaffData: () => Promise<void>;
 }
 
 const StaffContext = createContext<StaffContextType>({
@@ -19,83 +22,157 @@ const StaffContext = createContext<StaffContextType>({
   builders: [],
   managers: [],
   allStaff: [],
-  updateStaffMember: () => {},
-  addStaffMember: () => {},
-  removeStaffMember: () => {},
+  loading: false,
+  error: null,
+  updateStaffMember: async () => {},
+  addStaffMember: async () => {},
+  removeStaffMember: async () => {},
+  refreshStaffData: async () => {},
 });
 
 export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [moderators, setModerators] = useState<StaffMember[]>(allModerators);
-  const [builders, setBuilders] = useState<StaffMember[]>(allBuilders);
-  const [managers, setManagers] = useState<StaffMember[]>(allManagers);
+  const [moderators, setModerators] = useState<StaffMember[]>([]);
+  const [builders, setBuilders] = useState<StaffMember[]>([]);
+  const [managers, setManagers] = useState<StaffMember[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  // Function to fetch staff data from Supabase
+  const fetchStaffData = useCallback(async () => {
+    try {
+      setLoading(true);
+      const allStaff = await supabaseService.getAllStaff();
+      
+      // Separate staff by role
+      const mods: StaffMember[] = [];
+      const builds: StaffMember[] = [];
+      const mgrs: StaffMember[] = [];
+      
+      allStaff.forEach(staff => {
+        if (staff.role === 'Moderator') {
+          mods.push(staff);
+        } else if (staff.role === 'Builder') {
+          builds.push(staff);
+        } else if (staff.role === 'Manager') {
+          mgrs.push(staff);
+        }
+      });
+      
+      // Set states with the fetched data
+      setModerators(mods);
+      setBuilders(builds);
+      setManagers(mgrs);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error('Failed to fetch staff data'));
+      toast({
+        title: "Error",
+        description: "Failed to load staff data. Please try again later.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Refresh staff data
+  const refreshStaffData = useCallback(async () => {
+    await fetchStaffData();
+  }, [fetchStaffData]);
+
+  // Fetch staff data on component mount
+  useEffect(() => {
+    fetchStaffData();
+  }, [fetchStaffData]);
+
+  // Set up real-time subscriptions
+  useEffect(() => {
+    const unsubscribeModerators = supabaseService.subscribeToRealTimeUpdates('moderators', refreshStaffData);
+    const unsubscribeBuilders = supabaseService.subscribeToRealTimeUpdates('builders', refreshStaffData);
+    const unsubscribeManagers = supabaseService.subscribeToRealTimeUpdates('managers', refreshStaffData);
+    
+    // Clean up subscriptions when the component unmounts
+    return () => {
+      unsubscribeModerators();
+      unsubscribeBuilders();
+      unsubscribeManagers();
+    };
+  }, [refreshStaffData]);
+
+  // Update a staff member
+  const updateStaffMember = async (updatedMember: StaffMember) => {
+    try {
+      const result = await supabaseService.updateStaffMember(updatedMember);
+      if (result) {
+        // Update the local state for immediate UI update
+        if (updatedMember.role === 'Moderator') {
+          setModerators(prev => prev.map(mod => mod.id === updatedMember.id ? result : mod));
+        } else if (updatedMember.role === 'Builder') {
+          setBuilders(prev => prev.map(builder => builder.id === updatedMember.id ? result : builder));
+        } else if (updatedMember.role === 'Manager') {
+          setManagers(prev => prev.map(manager => manager.id === updatedMember.id ? result : manager));
+        }
+      }
+    } catch (err) {
+      console.error('Error updating staff member:', err);
+      toast({
+        title: "Update Failed",
+        description: "Failed to update staff member information.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Add a new staff member
+  const addStaffMember = async (newMember: Omit<StaffMember, 'id'>) => {
+    try {
+      const result = await supabaseService.createStaffMember(newMember);
+      if (result) {
+        // Update the local state for immediate UI update
+        if (result.role === 'Moderator') {
+          setModerators(prev => [...prev, result]);
+        } else if (result.role === 'Builder') {
+          setBuilders(prev => [...prev, result]);
+        } else if (result.role === 'Manager') {
+          setManagers(prev => [...prev, result]);
+        }
+      }
+    } catch (err) {
+      console.error('Error adding staff member:', err);
+      toast({
+        title: "Add Failed",
+        description: "Failed to add new staff member.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Remove a staff member
+  const removeStaffMember = async (id: string, role: StaffRole) => {
+    try {
+      const success = await supabaseService.deleteStaffMember(id, role);
+      if (success) {
+        // Update the local state for immediate UI update
+        if (role === 'Moderator') {
+          setModerators(prev => prev.filter(mod => mod.id !== id));
+        } else if (role === 'Builder') {
+          setBuilders(prev => prev.filter(builder => builder.id !== id));
+        } else if (role === 'Manager') {
+          setManagers(prev => prev.filter(manager => manager.id !== id));
+        }
+      }
+    } catch (err) {
+      console.error('Error removing staff member:', err);
+      toast({
+        title: "Remove Failed",
+        description: "Failed to remove staff member.",
+        variant: "destructive",
+      });
+    }
+  };
 
   const getAllStaff = (): StaffMember[] => {
     return [...moderators, ...builders, ...managers];
-  };
-
-  const updateStaffMember = (updatedMember: StaffMember) => {
-    // First update in-memory, then would sync to Supabase in a real implementation
-    const { role } = updatedMember;
-    
-    if (role === 'Moderator') {
-      setModerators(prev => 
-        processStaffData(prev.map(mod => mod.id === updatedMember.id ? updatedMember : mod))
-      );
-    } else if (role === 'Builder') {
-      setBuilders(prev => 
-        processStaffData(prev.map(builder => builder.id === updatedMember.id ? updatedMember : builder))
-      );
-    } else if (role === 'Manager') {
-      setManagers(prev => 
-        processStaffData(prev.map(manager => manager.id === updatedMember.id ? updatedMember : manager))
-      );
-    }
-    
-    toast({
-      title: "Staff Updated",
-      description: `${updatedMember.name}'s information has been updated.`,
-    });
-  };
-
-  const addStaffMember = (newMember: Omit<StaffMember, 'id'>) => {
-    const staffMember: StaffMember = {
-      ...newMember,
-      id: `${newMember.role.toLowerCase()}-${Date.now()}`,
-    };
-    
-    const processedMember = processStaffData([staffMember])[0];
-    
-    if (processedMember.role === 'Moderator') {
-      setModerators(prev => [...prev, processedMember]);
-    } else if (processedMember.role === 'Builder') {
-      setBuilders(prev => [...prev, processedMember]);
-    } else if (processedMember.role === 'Manager') {
-      setManagers(prev => [...prev, processedMember]);
-    }
-    
-    toast({
-      title: "Staff Added",
-      description: `${processedMember.name} has been added as a ${processedMember.role}.`,
-    });
-  };
-
-  const removeStaffMember = (id: string) => {
-    const staffMember = getAllStaff().find(staff => staff.id === id);
-    
-    if (!staffMember) return;
-    
-    if (staffMember.role === 'Moderator') {
-      setModerators(prev => prev.filter(mod => mod.id !== id));
-    } else if (staffMember.role === 'Builder') {
-      setBuilders(prev => prev.filter(builder => builder.id !== id));
-    } else if (staffMember.role === 'Manager') {
-      setManagers(prev => prev.filter(manager => manager.id !== id));
-    }
-    
-    toast({
-      title: "Staff Removed",
-      description: `${staffMember.name} has been removed.`,
-    });
   };
 
   return (
@@ -105,9 +182,12 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         builders,
         managers,
         allStaff: getAllStaff(),
+        loading,
+        error,
         updateStaffMember,
         addStaffMember,
         removeStaffMember,
+        refreshStaffData,
       }}
     >
       {children}

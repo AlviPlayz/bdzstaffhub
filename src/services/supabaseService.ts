@@ -16,6 +16,7 @@ const getTableForRole = (role: StaffRole): StaffTableName => {
     case 'Moderator': return 'moderators';
     case 'Builder': return 'builders';
     case 'Manager': return 'managers';
+    case 'Owner': return 'managers'; // Owners are stored in the managers table
   }
 };
 
@@ -236,14 +237,14 @@ const supabaseManagerToStaffMember = (manager: SupabaseManager): StaffMember => 
     objectivity: {
       id: 'objectivity',
       name: 'Objectivity',
-      score: manager.objectivity,
-      letterGrade: calculateLetterGrade(manager.objectivity)
+      score: manager.objectivity || 10,
+      letterGrade: calculateLetterGrade(manager.objectivity || 10)
     },
     initiative: {
       id: 'initiative',
       name: 'Initiative',
-      score: manager.initiative,
-      letterGrade: calculateLetterGrade(manager.initiative)
+      score: manager.initiative || 10,
+      letterGrade: calculateLetterGrade(manager.initiative || 10)
     },
     // Builder metrics
     exterior: {
@@ -279,20 +280,20 @@ const supabaseManagerToStaffMember = (manager: SupabaseManager): StaffMember => 
     cooperativeness: {
       id: 'cooperativeness',
       name: 'Cooperativeness',
-      score: manager.cooperativeness,
-      letterGrade: calculateLetterGrade(manager.cooperativeness)
+      score: manager.cooperativeness || 10,
+      letterGrade: calculateLetterGrade(manager.cooperativeness || 10)
     },
     creativity: {
       id: 'creativity',
       name: 'Creativity',
-      score: manager.creativity,
-      letterGrade: calculateLetterGrade(manager.creativity)
+      score: manager.creativity || 10,
+      letterGrade: calculateLetterGrade(manager.creativity || 10)
     },
     consistency: {
       id: 'consistency',
       name: 'Consistency',
-      score: manager.consistency,
-      letterGrade: calculateLetterGrade(manager.consistency)
+      score: manager.consistency || 10,
+      letterGrade: calculateLetterGrade(manager.consistency || 10)
     }
   };
 
@@ -301,10 +302,13 @@ const supabaseManagerToStaffMember = (manager: SupabaseManager): StaffMember => 
   const totalScore = values.reduce((sum, metric) => sum + metric.score, 0);
   const average = totalScore / values.length;
 
+  // Determine if this is an owner based on rank field
+  const isOwner = manager.rank.toLowerCase() === 'owner';
+  
   return {
     id: manager.id,
     name: manager.name,
-    role: 'Manager',
+    role: isOwner ? 'Owner' : 'Manager',
     avatar: manager.profile_image_url || 'https://i.pravatar.cc/150?img=4',
     metrics,
     overallScore: parseFloat(average.toFixed(1)),
@@ -323,38 +327,40 @@ const staffMemberToSupabaseData = (staff: StaffMember) => {
   };
   
   if (role === 'Moderator') {
+    const moderatorMetrics = metrics as ModeratorMetrics;
     return {
       ...commonFields,
-      responsiveness: metrics.responsiveness.score,
-      fairness: metrics.fairness.score,
-      communication: metrics.communication.score,
-      conflict_resolution: metrics.conflictResolution.score,
-      rule_enforcement: metrics.ruleEnforcement.score,
-      engagement: metrics.engagement.score,
-      supportiveness: metrics.supportiveness.score,
-      adaptability: metrics.adaptability.score,
-      objectivity: metrics.objectivity.score,
-      initiative: metrics.initiative.score,
+      responsiveness: moderatorMetrics.responsiveness.score,
+      fairness: moderatorMetrics.fairness.score,
+      communication: moderatorMetrics.communication.score,
+      conflict_resolution: moderatorMetrics.conflictResolution.score,
+      rule_enforcement: moderatorMetrics.ruleEnforcement.score,
+      engagement: moderatorMetrics.engagement.score,
+      supportiveness: moderatorMetrics.supportiveness.score,
+      adaptability: moderatorMetrics.adaptability.score,
+      objectivity: moderatorMetrics.objectivity.score,
+      initiative: moderatorMetrics.initiative.score,
       overall_grade: staff.overallGrade
     };
   } else if (role === 'Builder') {
+    const builderMetrics = metrics as BuilderMetrics;
     return {
       ...commonFields,
-      exterior: metrics.exterior.score,
-      interior: metrics.interior.score,
-      decoration: metrics.decoration.score,
-      effort: metrics.effort.score,
-      contribution: metrics.contribution.score,
-      communication: metrics.communication.score,
-      adaptability: metrics.adaptability.score,
-      cooperativeness: metrics.cooperativeness.score,
-      creativity: metrics.creativity.score,
-      consistency: metrics.consistency.score,
+      exterior: builderMetrics.exterior.score,
+      interior: builderMetrics.interior.score,
+      decoration: builderMetrics.decoration.score,
+      effort: builderMetrics.effort.score,
+      contribution: builderMetrics.contribution.score,
+      communication: builderMetrics.communication.score,
+      adaptability: builderMetrics.adaptability.score,
+      cooperativeness: builderMetrics.cooperativeness.score,
+      creativity: builderMetrics.creativity.score,
+      consistency: builderMetrics.consistency.score,
       overall_grade: staff.overallGrade
     };
-  } else if (role === 'Manager') {
-    // Manager has metrics from both Moderator and Builder
-    const managerMetrics = metrics as any;
+  } else if (role === 'Manager' || role === 'Owner') {
+    // Manager and Owner have metrics from both Moderator and Builder
+    const managerMetrics = metrics as ManagerMetrics;
     return {
       ...commonFields,
       // Moderator metrics
@@ -377,7 +383,9 @@ const staffMemberToSupabaseData = (staff: StaffMember) => {
       cooperativeness: managerMetrics.cooperativeness.score,
       creativity: managerMetrics.creativity.score,
       consistency: managerMetrics.consistency.score,
-      overall_grade: staff.overallGrade
+      overall_grade: staff.overallGrade,
+      // Set rank to "Owner" if the role is Owner
+      rank: role
     };
   }
   
@@ -402,9 +410,9 @@ export const supabaseService = {
       if (managersResponse.error) throw managersResponse.error;
       
       // Convert the data to our frontend format
-      const moderators = (moderatorsResponse.data || []).map(supabaseModeratorToStaffMember);
-      const builders = (buildersResponse.data || []).map(supabaseBuilderToStaffMember);
-      const managers = (managersResponse.data || []).map(supabaseManagerToStaffMember);
+      const moderators = (moderatorsResponse.data as SupabaseModerator[] || []).map(supabaseModeratorToStaffMember);
+      const builders = (buildersResponse.data as SupabaseBuilder[] || []).map(supabaseBuilderToStaffMember);
+      const managers = (managersResponse.data as SupabaseManager[] || []).map(supabaseManagerToStaffMember);
       
       // Return all staff members combined
       return [...moderators, ...builders, ...managers];
@@ -430,7 +438,12 @@ export const supabaseService = {
       
       const { data, error } = await supabase
         .from(tableName)
-        .insert({ ...dataToInsert, staff_id: staffId, rank: staff.role })
+        .insert({ 
+          ...dataToInsert, 
+          staff_id: staffId, 
+          rank: staff.role,
+          name: staff.name  // Ensure name is included
+        })
         .select()
         .single();
       

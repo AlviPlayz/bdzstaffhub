@@ -1,5 +1,5 @@
 
-import { StaffMember, StaffRole } from '@/types/staff';
+import { StaffMember, StaffRole, ModeratorMetrics, BuilderMetrics, ManagerMetrics, OwnerMetrics } from '@/types/staff';
 import { supabase } from '@/integrations/supabase/client';
 import { 
   SupabaseModerator, 

@@ -5,22 +5,28 @@ import { User, Search, Check, X } from 'lucide-react';
 import { StaffMember } from '@/types/staff';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
+import AdminAccessModal from '@/components/AdminAccessModal';
+import LoadingState from '@/components/LoadingState';
 
 const AdminPage: React.FC = () => {
   const { isAdmin } = useAuth();
   const { allStaff, updateStaffMember } = useStaff();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStaff, setSelectedStaff] = useState<StaffMember | null>(null);
+  const [showAdminModal, setShowAdminModal] = useState(!isAdmin);
+  
+  if (showAdminModal) {
+    return (
+      <AdminAccessModal 
+        isOpen={true}
+        onClose={() => window.location.href = '/'}
+        onSuccess={() => setShowAdminModal(false)}
+      />
+    );
+  }
   
   if (!isAdmin) {
-    return (
-      <div className="container mx-auto px-4 py-16 text-center">
-        <div className="cyber-panel max-w-md mx-auto">
-          <p className="text-cyber-cyan font-digital text-xl mb-2">Access Denied</p>
-          <p className="text-white/60 font-cyber">Administrator privileges required to access this page</p>
-        </div>
-      </div>
-    );
+    return <LoadingState />;
   }
   
   const filteredStaff = allStaff.filter(staff => 

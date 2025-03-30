@@ -2,14 +2,14 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
 interface AuthContextType {
-  isAuthenticated: boolean;
+  isAuthenticated: boolean; // Kept for backward compatibility
   isAdmin: boolean;
   login: (accessCode: string) => boolean;
   logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextType>({
-  isAuthenticated: false,
+  isAuthenticated: true, // Default everyone as authenticated
   isAdmin: false,
   login: () => false,
   logout: () => {},
@@ -18,44 +18,30 @@ const AuthContext = createContext<AuthContextType>({
 const ADMIN_ACCESS_CODE = 'APV09'; // Admin access code as specified
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(true); // Everyone is authenticated by default
   const [isAdmin, setIsAdmin] = useState(false);
 
-  // Check if user was previously authenticated
+  // Check if user was previously authenticated as admin
   useEffect(() => {
-    const authStatus = localStorage.getItem('bdzStaffHub_auth');
     const adminStatus = localStorage.getItem('bdzStaffHub_admin');
     
-    if (authStatus === 'true') {
-      setIsAuthenticated(true);
-      setIsAdmin(adminStatus === 'true');
+    if (adminStatus === 'true') {
+      setIsAdmin(true);
     }
   }, []);
 
   const login = (accessCode: string): boolean => {
     if (accessCode === ADMIN_ACCESS_CODE) {
-      setIsAuthenticated(true);
       setIsAdmin(true);
-      localStorage.setItem('bdzStaffHub_auth', 'true');
       localStorage.setItem('bdzStaffHub_admin', 'true');
       return true;
     } else {
-      // For demo purposes, allow any non-empty access code for regular access
-      if (accessCode.trim() !== '') {
-        setIsAuthenticated(true);
-        setIsAdmin(false);
-        localStorage.setItem('bdzStaffHub_auth', 'true');
-        localStorage.setItem('bdzStaffHub_admin', 'false');
-        return true;
-      }
       return false;
     }
   };
 
   const logout = () => {
-    setIsAuthenticated(false);
     setIsAdmin(false);
-    localStorage.removeItem('bdzStaffHub_auth');
     localStorage.removeItem('bdzStaffHub_admin');
   };
 

@@ -53,7 +53,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           mods.push(staff);
         } else if (staff.role === 'Builder') {
           builds.push(staff);
-        } else if (staff.role === 'Manager') {
+        } else if (staff.role === 'Manager' || staff.role === 'Owner') {
           mgrs.push(staff);
         }
       });
@@ -102,15 +102,21 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // Update a staff member
   const updateStaffMember = async (updatedMember: StaffMember) => {
     try {
-      await supabaseService.updateStaffMember(updatedMember);
+      const result = await supabaseService.updateStaffMember(updatedMember);
+      
       // Update the local state for immediate UI update
       if (updatedMember.role === 'Moderator') {
         setModerators(prev => prev.map(mod => mod.id === updatedMember.id ? updatedMember : mod));
       } else if (updatedMember.role === 'Builder') {
         setBuilders(prev => prev.map(builder => builder.id === updatedMember.id ? updatedMember : builder));
-      } else if (updatedMember.role === 'Manager') {
+      } else if (updatedMember.role === 'Manager' || updatedMember.role === 'Owner') {
         setManagers(prev => prev.map(manager => manager.id === updatedMember.id ? updatedMember : manager));
       }
+
+      toast({
+        title: "Success",
+        description: `${updatedMember.name}'s information has been updated.`,
+      });
     } catch (err) {
       console.error('Error updating staff member:', err);
       toast({
@@ -131,9 +137,14 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           setModerators(prev => [...prev, result]);
         } else if (result.role === 'Builder') {
           setBuilders(prev => [...prev, result]);
-        } else if (result.role === 'Manager') {
+        } else if (result.role === 'Manager' || result.role === 'Owner') {
           setManagers(prev => [...prev, result]);
         }
+
+        toast({
+          title: "Success",
+          description: `${result.name} has been added as a ${result.role}.`,
+        });
       }
     } catch (err) {
       console.error('Error adding staff member:', err);
@@ -155,9 +166,14 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           setModerators(prev => prev.filter(mod => mod.id !== id));
         } else if (role === 'Builder') {
           setBuilders(prev => prev.filter(builder => builder.id !== id));
-        } else if (role === 'Manager') {
+        } else if (role === 'Manager' || role === 'Owner') {
           setManagers(prev => prev.filter(manager => manager.id !== id));
         }
+
+        toast({
+          title: "Success",
+          description: "Staff member has been removed.",
+        });
       }
     } catch (err) {
       console.error('Error removing staff member:', err);

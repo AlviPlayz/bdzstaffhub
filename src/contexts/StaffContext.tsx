@@ -1,7 +1,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { StaffMember, StaffRole } from '@/types/staff';
-import { supabaseService } from '@/services/supabaseService';
+import * as supabaseService from '@/services/supabaseService';
 import { toast } from '@/hooks/use-toast';
 
 interface StaffContextType {
@@ -102,16 +102,14 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // Update a staff member
   const updateStaffMember = async (updatedMember: StaffMember) => {
     try {
-      const result = await supabaseService.updateStaffMember(updatedMember);
-      if (result) {
-        // Update the local state for immediate UI update
-        if (updatedMember.role === 'Moderator') {
-          setModerators(prev => prev.map(mod => mod.id === updatedMember.id ? result : mod));
-        } else if (updatedMember.role === 'Builder') {
-          setBuilders(prev => prev.map(builder => builder.id === updatedMember.id ? result : builder));
-        } else if (updatedMember.role === 'Manager') {
-          setManagers(prev => prev.map(manager => manager.id === updatedMember.id ? result : manager));
-        }
+      await supabaseService.updateStaffMember(updatedMember);
+      // Update the local state for immediate UI update
+      if (updatedMember.role === 'Moderator') {
+        setModerators(prev => prev.map(mod => mod.id === updatedMember.id ? updatedMember : mod));
+      } else if (updatedMember.role === 'Builder') {
+        setBuilders(prev => prev.map(builder => builder.id === updatedMember.id ? updatedMember : builder));
+      } else if (updatedMember.role === 'Manager') {
+        setManagers(prev => prev.map(manager => manager.id === updatedMember.id ? updatedMember : manager));
       }
     } catch (err) {
       console.error('Error updating staff member:', err);

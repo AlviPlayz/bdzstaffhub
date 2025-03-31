@@ -1,5 +1,6 @@
+
 // src/services/supabaseService.ts
-import { supabase } from '../supabaseClient';
+import { supabase } from '@/integrations/supabase/client';
 import { StaffMember, StaffRole, LetterGrade } from '../types/staff';
 
 // Function to fetch all staff members
@@ -132,4 +133,60 @@ export const calculateLetterGrade = (score: number): LetterGrade => {
     if (score >= 4) return 'D';
     if (score >= 3) return 'E';
     return 'E-';
+};
+
+// Function to subscribe to real-time updates
+export const subscribeToRealTimeUpdates = (table: string, callback: () => void) => {
+  const channel = supabase
+    .channel(`public:${table}`)
+    .on('postgres_changes', { event: '*', schema: 'public', table }, () => {
+      callback();
+    })
+    .subscribe();
+
+  return () => {
+    supabase.removeChannel(channel);
+  };
+};
+
+// Function to create a new staff member
+export const createStaffMember = async (data: Omit<StaffMember, 'id'>) => {
+  try {
+    const { data: newStaff, error } = await supabase
+      .from('staff')
+      .insert([data])
+      .select();
+
+    if (error) {
+      console.error('Error creating staff member:', error);
+      throw error;
+    }
+
+    return newStaff[0];
+  } catch (error) {
+    console.error('Error creating staff member:', error);
+    throw error;
+  }
+};
+
+// Function to delete a staff member
+export const deleteStaffMember = async (id: string, role: StaffRole) => {
+  try {
+    const { error } = await supabase
+      .from('staff')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error deleting staff member:', error);
+      throw error;
+      return false;
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Error deleting staff member:', error);
+    throw error;
+    return false;
+  }
 };

@@ -1,14 +1,19 @@
 
 import React from 'react';
 
-const LoadingState: React.FC = () => {
+interface LoadingStateProps {
+  message?: string;
+}
+
+const LoadingState: React.FC<LoadingStateProps> = ({ message = "Loading..." }) => {
   return (
-    <div className="flex flex-col items-center justify-center h-64">
-      <div className="size-16 relative">
-        <div className="absolute inset-0 border-4 border-cyber-cyan rounded-full opacity-20 animate-ping"></div>
-        <div className="absolute inset-0 border-4 border-t-transparent border-cyber-cyan rounded-full animate-spin"></div>
+    <div className="flex flex-col items-center justify-center min-h-[80vh] p-4">
+      <div className="relative w-24 h-24">
+        <div className="absolute inset-0 border-t-4 border-cyber-cyan rounded-full animate-spin"></div>
+        <div className="absolute inset-2 border-r-4 border-cyber-pink rounded-full animate-spin animate-[spin_1.2s_linear_infinite]"></div>
+        <div className="absolute inset-4 border-b-4 border-cyber-yellow rounded-full animate-spin animate-[spin_1.5s_linear_infinite]"></div>
       </div>
-      <p className="mt-4 text-cyber-cyan font-digital animate-pulse">LOADING DATA</p>
+      <p className="mt-6 text-xl font-digital text-cyber-cyan cyber-text-glow">{message}</p>
     </div>
   );
 };

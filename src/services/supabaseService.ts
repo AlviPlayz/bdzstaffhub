@@ -436,13 +436,57 @@ export const supabaseService = {
       // Generate a staff ID if not provided
       const staffId = `BDZ-${Math.floor(100 + Math.random() * 900)}`;
       
+      // Handle image upload if it's a Base64 string
+      let profileImageUrl = staff.avatar;
+      if (staff.avatar && staff.avatar.startsWith('data:image')) {
+        // Extract Base64 data
+        const base64Data = staff.avatar.split(',')[1];
+        if (base64Data) {
+          // Convert Base64 to Blob
+          const byteCharacters = atob(base64Data);
+          const byteArrays = [];
+          for (let i = 0; i < byteCharacters.length; i++) {
+            byteArrays.push(byteCharacters.charCodeAt(i));
+          }
+          const blob = new Blob([new Uint8Array(byteArrays)], { type: 'image/jpeg' });
+          
+          // Create a file name
+          const fileName = `${staffId}-profile-${Date.now()}.jpg`;
+          
+          // Upload to Supabase Storage
+          try {
+            const { data: uploadData, error: uploadError } = await supabase.storage
+              .from('staff-images')
+              .upload(fileName, blob, {
+                contentType: 'image/jpeg',
+                cacheControl: '3600'
+              });
+              
+            if (uploadError) throw uploadError;
+            
+            // Get public URL
+            const { data: urlData } = supabase.storage
+              .from('staff-images')
+              .getPublicUrl(fileName);
+              
+            if (urlData && urlData.publicUrl) {
+              profileImageUrl = urlData.publicUrl;
+            }
+          } catch (uploadErr) {
+            console.error('Error uploading profile image:', uploadErr);
+            // Continue with default avatar if upload fails
+          }
+        }
+      }
+      
       const { data, error } = await supabase
         .from(tableName)
         .insert({ 
           ...dataToInsert, 
           staff_id: staffId, 
-          rank: staff.role,
-          name: staff.name  // Ensure name is included
+          rank: staff.role === 'Moderator' || staff.role === 'Builder' ? dataToInsert.rank || staff.role : staff.role,
+          name: staff.name,
+          profile_image_url: profileImageUrl
         })
         .select()
         .single();

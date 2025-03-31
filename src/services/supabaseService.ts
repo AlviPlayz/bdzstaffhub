@@ -42,8 +42,9 @@ const transformToStaffMember = (row: any, role: StaffRole): StaffMember => {
       communication: createMetric('Communication', row.communication || 0),
       adaptability: createMetric('Adaptability', row.adaptability || 0),
       cooperativeness: createMetric('Cooperativeness', row.cooperativeness || 0),
-      creativity: createMetric('Creativity', row.creativity || 0),
-      consistency: createMetric('Consistency', row.consistency || 0)
+      // Check if these exist, otherwise use defaults
+      creativity: createMetric('Creativity', typeof row.creativity !== 'undefined' ? row.creativity : 0),
+      consistency: createMetric('Consistency', typeof row.consistency !== 'undefined' ? row.consistency : 0)
     };
   } else if (role === 'Manager' || role === 'Owner') {
     // Manager has both moderator and builder metrics
@@ -66,15 +67,19 @@ const transformToStaffMember = (row: any, role: StaffRole): StaffMember => {
       effort: createMetric('Effort', row.effort || 10),
       contribution: createMetric('Contribution', row.contribution || 10),
       cooperativeness: createMetric('Cooperativeness', row.cooperativeness || 10),
-      creativity: createMetric('Creativity', row.creativity || 10),
-      consistency: createMetric('Consistency', row.consistency || 10)
+      creativity: createMetric('Creativity', typeof row.creativity !== 'undefined' ? row.creativity : 10),
+      consistency: createMetric('Consistency', typeof row.consistency !== 'undefined' ? row.consistency : 10)
     };
   }
   
-  // Calculate overall score - fix for the TypeScript error
+  // Calculate overall score
   const metricEntries = Object.values(metrics);
-  // Make sure we're using typed values
-  const scores = metricEntries.map(metric => (metric as PerformanceMetric).score);
+  // Use typed values with proper type guard
+  const scores = metricEntries.map(metric => {
+    const typedMetric = metric as PerformanceMetric;
+    return typeof typedMetric.score === 'number' ? typedMetric.score : 0;
+  });
+  
   const overallScore = scores.length > 0 
     ? parseFloat((scores.reduce((sum, score) => sum + score, 0) / scores.length).toFixed(1))
     : 0;
@@ -129,8 +134,9 @@ const transformToDatabase = (staff: StaffMember): any => {
     dbObject.communication = metrics.communication.score;
     dbObject.adaptability = metrics.adaptability.score;
     dbObject.cooperativeness = metrics.cooperativeness.score;
-    dbObject.creativity = metrics.creativity.score;
-    dbObject.consistency = metrics.consistency.score;
+    // Only add these if they exist in the database schema
+    if (metrics.creativity) dbObject.creativity = metrics.creativity.score;
+    if (metrics.consistency) dbObject.consistency = metrics.consistency.score;
     // Add staff_id if not present
     if (!dbObject.staff_id) {
       dbObject.staff_id = `BDZ-${Math.floor(100 + Math.random() * 900)}`;
@@ -155,8 +161,9 @@ const transformToDatabase = (staff: StaffMember): any => {
     dbObject.effort = metrics.effort.score;
     dbObject.contribution = metrics.contribution.score;
     dbObject.cooperativeness = metrics.cooperativeness.score;
-    dbObject.creativity = metrics.creativity.score;
-    dbObject.consistency = metrics.consistency.score;
+    // Only add these if they exist in the metrics
+    if (metrics.creativity) dbObject.creativity = metrics.creativity.score;
+    if (metrics.consistency) dbObject.consistency = metrics.consistency.score;
     // Add staff_id if not present
     if (!dbObject.staff_id) {
       dbObject.staff_id = `BDZ-${Math.floor(100 + Math.random() * 900)}`;
@@ -365,8 +372,20 @@ export const getStaffMemberById = async (staffId: string): Promise<StaffMember |
 // Function to calculate overall score and grade
 export const calculateOverallScoreAndGrade = (staff: StaffMember): { overallScore: number; overallGrade: LetterGrade } => {
   const metricValues = Object.values(staff.metrics);
-  const totalScore = metricValues.reduce((sum, metric) => sum + (metric as PerformanceMetric).score, 0);
-  const average = parseFloat((totalScore / metricValues.length).toFixed(1));
+  
+  // Calculate overall score with type safety
+  let totalScore = 0;
+  let validMetrics = 0;
+  
+  metricValues.forEach(metric => {
+    const typedMetric = metric as PerformanceMetric;
+    if (typeof typedMetric.score === 'number') {
+      totalScore += typedMetric.score;
+      validMetrics++;
+    }
+  });
+  
+  const average = validMetrics > 0 ? parseFloat((totalScore / validMetrics).toFixed(1)) : 0;
 
   let overallGrade: LetterGrade;
   if (staff.role === 'Manager' || staff.role === 'Owner') {
@@ -409,7 +428,9 @@ export const subscribeToRealTimeUpdates = (table: string, callback: () => void) 
 // Function to create a new staff member
 export const createStaffMember = async (data: Omit<StaffMember, 'id'>) => {
   try {
-    const dbData = transformToDatabase(data as StaffMember);
+    const staffData = data as StaffMember;
+    staffData.id = crypto.randomUUID(); // Temporary ID for transformation
+    const dbData = transformToDatabase(staffData);
     let result;
     
     if (data.role === 'Moderator') {
@@ -420,9 +441,26 @@ export const createStaffMember = async (data: Omit<StaffMember, 'id'>) => {
       if (error) throw error;
       result = newStaff?.[0];
     } else if (data.role === 'Builder') {
+      // Create a builder-specific object only with properties from the schema
+      const builderData = {
+        name: dbData.name,
+        rank: dbData.rank,
+        profile_image_url: dbData.profile_image_url,
+        staff_id: dbData.staff_id,
+        overall_grade: dbData.overall_grade,
+        exterior: dbData.exterior,
+        interior: dbData.interior,
+        decoration: dbData.decoration,
+        effort: dbData.effort,
+        contribution: dbData.contribution,
+        communication: dbData.communication,
+        adaptability: dbData.adaptability,
+        cooperativeness: dbData.cooperativeness
+      };
+      
       const { data: newStaff, error } = await supabase
         .from('builders')
-        .insert([dbData])
+        .insert([builderData])
         .select();
       if (error) throw error;
       result = newStaff?.[0];

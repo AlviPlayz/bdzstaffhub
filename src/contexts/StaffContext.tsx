@@ -102,9 +102,10 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // Update a staff member
   const updateStaffMember = async (updatedMember: StaffMember) => {
     try {
-      const result = await supabaseService.updateStaffMember(updatedMember);
+      await supabaseService.updateStaffMember(updatedMember);
       
-      // Update the local state for immediate UI update
+      // Manually update the local state for immediate UI update
+      // instead of waiting for the real-time subscription
       if (updatedMember.role === 'Moderator') {
         setModerators(prev => prev.map(mod => mod.id === updatedMember.id ? updatedMember : mod));
       } else if (updatedMember.role === 'Builder') {
@@ -131,8 +132,10 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const addStaffMember = async (newMember: Omit<StaffMember, 'id'>) => {
     try {
       const result = await supabaseService.createStaffMember(newMember);
+      
       if (result) {
-        // Update the local state for immediate UI update
+        // Manually update local state for immediate UI update
+        // This ensures the new staff member appears instantly
         if (result.role === 'Moderator') {
           setModerators(prev => [...prev, result]);
         } else if (result.role === 'Builder') {
@@ -145,12 +148,17 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           title: "Success",
           description: `${result.name} has been added as a ${result.role}.`,
         });
+        
+        // Force refresh data to ensure everything is in sync
+        setTimeout(() => {
+          refreshStaffData();
+        }, 1000);
       }
     } catch (err) {
       console.error('Error adding staff member:', err);
       toast({
         title: "Add Failed",
-        description: "Failed to add new staff member.",
+        description: "Failed to add new staff member. Please check console for details.",
         variant: "destructive",
       });
     }
@@ -160,6 +168,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const removeStaffMember = async (id: string, role: StaffRole) => {
     try {
       const success = await supabaseService.deleteStaffMember(id, role);
+      
       if (success) {
         // Update the local state for immediate UI update
         if (role === 'Moderator') {

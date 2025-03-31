@@ -1,7 +1,7 @@
 
 import React, { useState, useRef } from 'react';
 import { StaffRole, LetterGrade } from '@/types/staff';
-import { Camera } from 'lucide-react';
+import { Camera, Upload } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { calculateLetterGrade } from '@/utils/gradeUtils';
 import { supabase } from '@/integrations/supabase/client';
@@ -14,6 +14,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
+  DialogFooter,
 } from '@/components/ui/dialog';
 import {
   Form,
@@ -30,6 +31,7 @@ import {
   SheetTitle,
   SheetDescription,
 } from '@/components/ui/sheet';
+import { Button } from '@/components/ui/button';
 
 // Form schema for adding/editing staff
 const staffFormSchema = z.object({
@@ -347,15 +349,25 @@ const AddStaffForm: React.FC<AddStaffFormProps> = ({ isOpen, onClose, onAddStaff
       form.reset();
       setImagePreview(null);
       setStaffMetrics({});
+      
+      toast({
+        title: "Staff Added",
+        description: `${values.name} has been added as a ${values.role}`,
+      });
     } catch (error) {
       console.error('Error adding staff:', error);
+      toast({
+        title: "Failed to add staff",
+        description: "An error occurred while saving staff information",
+        variant: "destructive"
+      });
     }
   };
   
   const renderEvaluationSheet = () => {
     return (
       <Sheet open={showEvaluationSheet} onOpenChange={setShowEvaluationSheet}>
-        <SheetContent side="right" className="bg-cyber-darkblue border-l border-cyber-cyan w-full sm:max-w-lg">
+        <SheetContent side="right" className="bg-cyber-darkblue border-l border-cyber-cyan w-full sm:max-w-md max-h-screen overflow-y-auto">
           <SheetHeader>
             <SheetTitle className="text-center font-digital text-xl text-cyber-cyan">
               Staff Performance Metrics
@@ -365,7 +377,7 @@ const AddStaffForm: React.FC<AddStaffFormProps> = ({ isOpen, onClose, onAddStaff
             </SheetDescription>
           </SheetHeader>
           
-          <div className="space-y-8 mt-8 max-h-[calc(100vh-220px)] overflow-y-auto pr-4">
+          <div className="space-y-6 mt-6 overflow-y-auto pr-2">
             {Object.entries(getGroupedMetrics()).map(([group, metrics]) => (
               <div key={group} className="space-y-4">
                 <h3 className="text-lg font-digital text-white border-b border-cyber-cyan/30 pb-1">
@@ -408,14 +420,14 @@ const AddStaffForm: React.FC<AddStaffFormProps> = ({ isOpen, onClose, onAddStaff
             ))}
           </div>
           
-          <div className="mt-8 pt-4 border-t border-cyber-cyan/30">
-            <button
+          <div className="mt-8 pt-4 border-t border-cyber-cyan/30 sticky bottom-0 bg-cyber-darkblue pb-2">
+            <Button
               type="button"
               onClick={() => setShowEvaluationSheet(false)}
               className="w-full cyber-button"
             >
               Save & Close
-            </button>
+            </Button>
           </div>
         </SheetContent>
       </Sheet>
@@ -425,7 +437,7 @@ const AddStaffForm: React.FC<AddStaffFormProps> = ({ isOpen, onClose, onAddStaff
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="bg-cyber-darkblue border border-cyber-cyan shadow-[0_0_15px_rgba(0,255,255,0.5)] max-w-lg">
+        <DialogContent className="bg-cyber-darkblue border border-cyber-cyan shadow-[0_0_15px_rgba(0,255,255,0.5)] max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-center">
               <span className="font-digital text-xl cyber-text-glow text-cyber-cyan">ADD NEW STAFF MEMBER</span>
@@ -440,20 +452,25 @@ const AddStaffForm: React.FC<AddStaffFormProps> = ({ isOpen, onClose, onAddStaff
               {/* Profile Image Upload */}
               <div className="flex flex-col items-center mb-6">
                 <div
-                  className={`relative w-28 h-28 rounded-full overflow-hidden border-2 ${
-                    isDragging ? 'border-cyber-cyan/80 bg-cyber-darkpurple/50' : 'border-cyber-cyan/30'
-                  } cursor-pointer transition-all duration-200 mb-2`}
+                  className={`relative w-32 h-32 rounded-full overflow-hidden border-2 ${
+                    isDragging ? 'border-cyber-cyan border-dashed bg-cyber-darkpurple/50' : 'border-cyber-cyan/30'
+                  } cursor-pointer transition-all duration-200 mb-2 hover:border-cyber-cyan`}
                   onClick={openFileDialog}
                   onDragOver={handleDragOver}
                   onDragLeave={handleDragLeave}
                   onDrop={handleDrop}
                 >
                   {imagePreview ? (
-                    <img 
-                      src={imagePreview} 
-                      alt="Preview" 
-                      className="w-full h-full object-cover" 
-                    />
+                    <>
+                      <img 
+                        src={imagePreview} 
+                        alt="Preview" 
+                        className="w-full h-full object-cover" 
+                      />
+                      <div className="absolute inset-0 bg-black/20 opacity-0 hover:opacity-100 flex items-center justify-center transition-opacity">
+                        <Upload size={24} className="text-white" />
+                      </div>
+                    </>
                   ) : (
                     <div className="flex flex-col items-center justify-center h-full text-white/60 p-2">
                       <Camera size={28} className="mb-1 text-cyber-cyan/60" />
@@ -476,9 +493,18 @@ const AddStaffForm: React.FC<AddStaffFormProps> = ({ isOpen, onClose, onAddStaff
                   accept="image/jpeg, image/png, image/webp"
                   onChange={handleFileSelect}
                 />
-                <span className="text-xs text-white/50">
-                  JPG, PNG or WebP (max. 5MB)
-                </span>
+                <div className="text-xs text-white/50 flex flex-col items-center">
+                  <span>JPG, PNG or WebP (max. 5MB)</span>
+                  <Button 
+                    type="button" 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={openFileDialog}
+                    className="text-cyber-cyan hover:text-cyber-cyan/80 p-0 h-auto mt-1"
+                  >
+                    Browse files
+                  </Button>
+                </div>
               </div>
               
               {/* Name Field */}
@@ -576,13 +602,14 @@ const AddStaffForm: React.FC<AddStaffFormProps> = ({ isOpen, onClose, onAddStaff
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <h3 className="text-white font-cyber">Performance Evaluation</h3>
-                  <button
+                  <Button
                     type="button"
+                    variant="ghost"
                     onClick={() => setShowEvaluationSheet(true)}
-                    className="text-sm text-cyber-cyan hover:underline flex items-center gap-1"
+                    className="text-sm text-cyber-cyan hover:text-cyber-cyan/80 hover:bg-transparent p-0 h-auto"
                   >
                     Set Scores <span className="text-xs">(0-10)</span>
-                  </button>
+                  </Button>
                 </div>
                 
                 <div className="bg-cyber-black/50 p-3 rounded border border-cyber-cyan/30">
@@ -610,21 +637,22 @@ const AddStaffForm: React.FC<AddStaffFormProps> = ({ isOpen, onClose, onAddStaff
                 </div>
               </div>
               
-              <div className="flex justify-end gap-2 mt-6">
-                <button 
-                  type="button" 
+              <DialogFooter className="flex justify-end gap-2 mt-6 pt-2 border-t border-cyber-cyan/20">
+                <Button
+                  type="button"
+                  variant="outline"
                   onClick={onClose}
-                  className="px-4 py-2 text-white hover:text-cyber-cyan font-cyber border border-cyber-cyan/50 rounded hover:border-cyber-cyan transition-all"
+                  className="border-cyber-cyan/50 text-white hover:text-cyber-cyan hover:border-cyber-cyan"
                 >
                   Cancel
-                </button>
-                <button 
-                  type="submit" 
-                  className="cyber-button rounded"
+                </Button>
+                <Button
+                  type="submit"
+                  className="cyber-button rounded bg-cyber-cyan hover:bg-cyber-cyan/80 text-black font-medium"
                 >
                   Add Staff
-                </button>
-              </div>
+                </Button>
+              </DialogFooter>
             </form>
           </Form>
         </DialogContent>

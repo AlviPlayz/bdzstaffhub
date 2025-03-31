@@ -45,7 +45,7 @@ const transformToStaffMember = (row: any, role: StaffRole): StaffMember => {
       creativity: createMetric('Creativity', row.creativity || 0),
       consistency: createMetric('Consistency', row.consistency || 0)
     };
-  } else if (role === 'Manager') {
+  } else if (role === 'Manager' || role === 'Owner') {
     // Manager has both moderator and builder metrics
     metrics = {
       // Moderator metrics
@@ -71,8 +71,10 @@ const transformToStaffMember = (row: any, role: StaffRole): StaffMember => {
     };
   }
   
-  // Calculate overall score
-  const scores = Object.values(metrics).map(metric => metric.score);
+  // Calculate overall score - fix for the TypeScript error
+  const metricEntries = Object.values(metrics);
+  // Make sure we're using typed values
+  const scores = metricEntries.map(metric => (metric as PerformanceMetric).score);
   const overallScore = scores.length > 0 
     ? parseFloat((scores.reduce((sum, score) => sum + score, 0) / scores.length).toFixed(1))
     : 0;
@@ -111,6 +113,8 @@ const transformToDatabase = (staff: StaffMember): any => {
     dbObject.engagement = metrics.engagement.score;
     dbObject.supportiveness = metrics.supportiveness.score;
     dbObject.adaptability = metrics.adaptability.score;
+    dbObject.objectivity = metrics.objectivity ? metrics.objectivity.score : 0;
+    dbObject.initiative = metrics.initiative ? metrics.initiative.score : 0;
     // Add staff_id if not present
     if (!dbObject.staff_id) {
       dbObject.staff_id = `BDZ-${Math.floor(100 + Math.random() * 900)}`;
@@ -131,7 +135,7 @@ const transformToDatabase = (staff: StaffMember): any => {
     if (!dbObject.staff_id) {
       dbObject.staff_id = `BDZ-${Math.floor(100 + Math.random() * 900)}`;
     }
-  } else if (staff.role === 'Manager') {
+  } else if (staff.role === 'Manager' || staff.role === 'Owner') {
     const metrics = staff.metrics as ManagerMetrics;
     // Moderator metrics
     dbObject.responsiveness = metrics.responsiveness.score;
@@ -142,6 +146,8 @@ const transformToDatabase = (staff: StaffMember): any => {
     dbObject.engagement = metrics.engagement.score;
     dbObject.supportiveness = metrics.supportiveness.score;
     dbObject.adaptability = metrics.adaptability.score;
+    dbObject.objectivity = metrics.objectivity ? metrics.objectivity.score : 0;
+    dbObject.initiative = metrics.initiative ? metrics.initiative.score : 0;
     // Builder metrics
     dbObject.exterior = metrics.exterior.score;
     dbObject.interior = metrics.interior.score;
@@ -221,7 +227,7 @@ export const addStaffMember = async (data: any) => {
         .select();
       if (error) throw error;
       result = newStaff;
-    } else if (staffData.role === 'Manager') {
+    } else if (staffData.role === 'Manager' || staffData.role === 'Owner') {
       const { data: newStaff, error } = await supabase
         .from('managers')
         .insert([transformToDatabase(staffData)])
@@ -234,6 +240,7 @@ export const addStaffMember = async (data: any) => {
       throw new Error('Failed to insert staff member');
     }
 
+    // Transform the result back to a StaffMember before returning
     return transformToStaffMember(result[0], staffData.role);
   } catch (error) {
     console.error('Error adding staff member:', error);
@@ -258,7 +265,7 @@ export const updateStaffMember = async (staff: StaffMember) => {
         .update(dbData)
         .eq('id', staff.id);
       if (error) throw error;
-    } else if (staff.role === 'Manager') {
+    } else if (staff.role === 'Manager' || staff.role === 'Owner') {
       const { error } = await supabase
         .from('managers')
         .update(dbData)
@@ -290,7 +297,7 @@ export const removeStaffMember = async (staffId: string, role: StaffRole) => {
         .delete()
         .eq('id', staffId);
       error = result.error;
-    } else if (role === 'Manager') {
+    } else if (role === 'Manager' || role === 'Owner') {
       const result = await supabase
         .from('managers')
         .delete()
@@ -301,10 +308,14 @@ export const removeStaffMember = async (staffId: string, role: StaffRole) => {
     if (error) {
       console.error('Error removing staff member:', error);
       throw error;
+      return false;
     }
+    
+    return true;
   } catch (error) {
     console.error('Error removing staff member:', error);
     throw error;
+    return false;
   }
 };
 
@@ -354,7 +365,7 @@ export const getStaffMemberById = async (staffId: string): Promise<StaffMember |
 // Function to calculate overall score and grade
 export const calculateOverallScoreAndGrade = (staff: StaffMember): { overallScore: number; overallGrade: LetterGrade } => {
   const metricValues = Object.values(staff.metrics);
-  const totalScore = metricValues.reduce((sum, metric) => sum + metric.score, 0);
+  const totalScore = metricValues.reduce((sum, metric) => sum + (metric as PerformanceMetric).score, 0);
   const average = parseFloat((totalScore / metricValues.length).toFixed(1));
 
   let overallGrade: LetterGrade;
@@ -415,7 +426,7 @@ export const createStaffMember = async (data: Omit<StaffMember, 'id'>) => {
         .select();
       if (error) throw error;
       result = newStaff?.[0];
-    } else if (data.role === 'Manager') {
+    } else if (data.role === 'Manager' || data.role === 'Owner') {
       const { data: newStaff, error } = await supabase
         .from('managers')
         .insert([dbData])
@@ -452,7 +463,7 @@ export const deleteStaffMember = async (id: string, role: StaffRole) => {
         .delete()
         .eq('id', id);
       error = result.error;
-    } else if (role === 'Manager') {
+    } else if (role === 'Manager' || role === 'Owner') {
       const result = await supabase
         .from('managers')
         .delete()

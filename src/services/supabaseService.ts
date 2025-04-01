@@ -1,7 +1,7 @@
-// src/services/supabaseService.ts
+
 import { supabase } from '@/integrations/supabase/client';
-import { StaffMember, StaffRole, LetterGrade, ModeratorMetrics, BuilderMetrics, ManagerMetrics, PerformanceMetric } from '../types/staff';
-import { StaffTableName } from '../types/database';
+import { StaffMember, StaffRole, LetterGrade, ModeratorMetrics, BuilderMetrics, ManagerMetrics, PerformanceMetric } from '@/types/staff';
+import { StaffTableName } from '@/types/database';
 
 // Function to create a performance metric
 const createMetric = (name: string, score: number): PerformanceMetric => {

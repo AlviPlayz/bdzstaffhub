@@ -604,7 +604,7 @@ export const deleteStaffMember = async (id: string, role: StaffRole) => {
 export const updateStaffAvatar = async (file: File, staffId: string, role: StaffRole): Promise<string | null> => {
   try {
     // Upload the image to storage and get the URL
-    const imageUrl = await uploadStaffImage(file, staffId);
+    const imageUrl = await uploadStaffImage(file, staffId, role);
     
     if (!imageUrl) {
       return null;

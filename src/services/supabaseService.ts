@@ -2,6 +2,7 @@
 // src/services/supabaseService.ts
 import { supabase } from '@/integrations/supabase/client';
 import { StaffMember, StaffRole, LetterGrade, ModeratorMetrics, BuilderMetrics, ManagerMetrics, PerformanceMetric } from '../types/staff';
+import { StaffTableName } from '../types/database';
 
 // Function to create a performance metric
 const createMetric = (name: string, score: number): PerformanceMetric => {
@@ -520,5 +521,52 @@ export const deleteStaffMember = async (id: string, role: StaffRole) => {
     console.error('Error deleting staff member:', error);
     throw error;
     return false;
+  }
+};
+
+// Function to handle staff image uploads and save permanent URLs
+export const uploadStaffImage = async (file: File, staffId: string, role: StaffRole): Promise<string | null> => {
+  try {
+    // Create a unique file path for this staff member
+    const filePath = `staff/${role.toLowerCase()}/${staffId}`;
+    
+    // Upload the image
+    const { data, error } = await supabase.storage
+      .from('staff-avatars')
+      .upload(filePath, file, { 
+        upsert: true,
+        cacheControl: '3600'
+      });
+    
+    if (error) {
+      console.error('Image upload failed:', error.message);
+      return null;
+    }
+    
+    // Get the public URL
+    const imageUrl = `${SUPABASE_URL}/storage/v1/object/public/staff-avatars/${filePath}`;
+    
+    // Update the staff member's profile image in the database
+    if (role === 'Moderator') {
+      await supabase
+        .from('moderators')
+        .update({ profile_image_url: imageUrl })
+        .eq('id', staffId);
+    } else if (role === 'Builder') {
+      await supabase
+        .from('builders')
+        .update({ profile_image_url: imageUrl })
+        .eq('id', staffId);
+    } else if (role === 'Manager' || role === 'Owner') {
+      await supabase
+        .from('managers')
+        .update({ profile_image_url: imageUrl })
+        .eq('id', staffId);
+    }
+    
+    return imageUrl;
+  } catch (error) {
+    console.error('Error uploading staff image:', error);
+    return null;
   }
 };

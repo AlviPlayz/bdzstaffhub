@@ -43,13 +43,14 @@ export const initializeStorage = async () => {
  * Upload a staff avatar image and get a public URL
  * @param file Image file to upload
  * @param staffId ID of the staff member
+ * @param role Role of the staff member for organized storage
  * @returns Public URL of the uploaded image or null if failed
  */
-export const uploadStaffImage = async (file: File, staffId: string): Promise<string | null> => {
+export const uploadStaffImage = async (file: File, staffId: string, role: string): Promise<string | null> => {
   try {
     // Create a unique file path for this staff member with a timestamp to prevent caching
     const timestamp = new Date().getTime();
-    const filePath = `staff/${staffId}_${timestamp}`;
+    const filePath = `staff/${role.toLowerCase()}/${staffId}_${timestamp}`;
     
     // Upload the image
     const { data, error } = await supabase.storage

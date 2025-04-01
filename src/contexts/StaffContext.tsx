@@ -3,6 +3,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { StaffMember, StaffRole } from '@/types/staff';
 import * as supabaseService from '@/services/supabaseService';
 import { toast } from '@/hooks/use-toast';
+import { initializeStorage } from '@/integrations/supabase/storage';
 
 interface StaffContextType {
   moderators: StaffMember[];
@@ -36,6 +37,11 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [managers, setManagers] = useState<StaffMember[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<Error | null>(null);
+
+  // Initialize storage on component mount
+  useEffect(() => {
+    initializeStorage().catch(console.error);
+  }, []);
 
   // Function to fetch staff data from Supabase
   const fetchStaffData = useCallback(async () => {
@@ -104,8 +110,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     try {
       await supabaseService.updateStaffMember(updatedMember);
       
-      // Manually update the local state for immediate UI update
-      // instead of waiting for the real-time subscription
+      // Optimistic UI update for better user experience
       if (updatedMember.role === 'Moderator') {
         setModerators(prev => prev.map(mod => mod.id === updatedMember.id ? updatedMember : mod));
       } else if (updatedMember.role === 'Builder') {
@@ -134,8 +139,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const result = await supabaseService.createStaffMember(newMember);
       
       if (result) {
-        // Manually update local state for immediate UI update
-        // This ensures the new staff member appears instantly
+        // Optimistic UI update
         if (result.role === 'Moderator') {
           setModerators(prev => [...prev, result]);
         } else if (result.role === 'Builder') {
@@ -149,7 +153,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           description: `${result.name} has been added as a ${result.role}.`,
         });
         
-        // Force refresh data to ensure everything is in sync
+        // Full refresh after a short delay to ensure everything is in sync
         setTimeout(() => {
           refreshStaffData();
         }, 1000);
@@ -170,7 +174,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const success = await supabaseService.deleteStaffMember(id, role);
       
       if (success) {
-        // Update the local state for immediate UI update
+        // Optimistic UI update
         if (role === 'Moderator') {
           setModerators(prev => prev.filter(mod => mod.id !== id));
         } else if (role === 'Builder') {

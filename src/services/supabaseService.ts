@@ -1,6 +1,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { StaffMember, StaffRole, LetterGrade, ModeratorMetrics, BuilderMetrics, ManagerMetrics, PerformanceMetric } from '@/types/staff';
 import { StaffTableName } from '@/types/database';
+import { cleanupPreviousStaffImages } from '@/integrations/supabase/storage';
 
 // Function to create a performance metric
 const createMetric = (name: string, score: number): PerformanceMetric => {
@@ -381,8 +382,9 @@ export const getStaffMemberById = async (staffId: string): Promise<StaffMember |
 // Function to handle staff image uploads and save permanent URLs
 export const uploadStaffImage = async (file: File, staffId: string, role: StaffRole): Promise<string | null> => {
   try {
-    // Create a unique file path for this staff member
-    const filePath = `staff/${role.toLowerCase()}/${staffId}`;
+    // Create a unique file path for this staff member with timestamp for cache busting
+    const timestamp = new Date().getTime();
+    const filePath = `staff/${role.toLowerCase()}/${staffId}_${timestamp}`;
     
     // Upload the image
     const { data, error } = await supabase.storage
@@ -398,7 +400,6 @@ export const uploadStaffImage = async (file: File, staffId: string, role: StaffR
     }
     
     // Get the public URL with a timestamp to prevent caching
-    const timestamp = new Date().getTime();
     const { data: publicUrlData } = supabase.storage
       .from('staff-avatars')
       .getPublicUrl(`${filePath}?t=${timestamp}`);

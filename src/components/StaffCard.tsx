@@ -4,6 +4,7 @@ import { StaffMember } from '@/types/staff';
 import { getGradeColorClass } from '@/utils/gradeUtils';
 import { ArrowUpRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 
 interface StaffCardProps {
   staff: StaffMember;
@@ -13,20 +14,34 @@ interface StaffCardProps {
 const StaffCard: React.FC<StaffCardProps> = ({ staff, compact = false }) => {
   const { name, role, avatar, overallScore, overallGrade } = staff;
   
+  // Extract initials for avatar fallback
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(part => part[0])
+      .join('')
+      .toUpperCase();
+  };
+  
   return (
     <div className="cyber-panel rounded-lg transition-all duration-300 hover:scale-[1.02]">
       <div className="flex items-center gap-4">
         <div className="relative">
           <div className="w-16 h-16 rounded-full overflow-hidden cyber-border">
-            <img 
-              src={avatar || '/placeholder.svg'} 
-              alt={name} 
-              className="w-full h-full object-cover"
-              onError={(e) => {
-                // Fallback to placeholder if image fails to load
-                (e.target as HTMLImageElement).src = '/placeholder.svg';
-              }}
-            />
+            <Avatar className="w-full h-full">
+              <AvatarImage 
+                src={avatar || '/placeholder.svg'} 
+                alt={name}
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  // Fallback to placeholder if image fails to load
+                  (e.target as HTMLImageElement).src = '/placeholder.svg';
+                }}
+              />
+              <AvatarFallback className="bg-cyber-darkpurple text-cyber-cyan">
+                {getInitials(name)}
+              </AvatarFallback>
+            </Avatar>
           </div>
           <div className="absolute -bottom-1 -right-1">
             <span className={`${getGradeColorClass(overallGrade)} letter-grade`}>

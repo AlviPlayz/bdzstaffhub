@@ -7,6 +7,7 @@ import StaffCard from '@/components/StaffCard';
 import PerformanceBar from '@/components/PerformanceBar';
 import LoadingState from '@/components/LoadingState';
 import { ArrowLeft } from 'lucide-react';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 
 const StaffDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -44,6 +45,15 @@ const StaffDetailPage: React.FC = () => {
 
   const handleGoBack = () => {
     navigate(-1);
+  };
+
+  // Get initials for avatar fallback
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(part => part[0])
+      .join('')
+      .toUpperCase();
   };
 
   if (loading) {
@@ -87,15 +97,16 @@ const StaffDetailPage: React.FC = () => {
             <div className="flex items-center gap-4 mb-4">
               <div className="relative">
                 <div className="w-20 h-20 rounded-full overflow-hidden cyber-border">
-                  <img 
-                    src={staff.avatar || '/placeholder.svg'} 
-                    alt={staff.name} 
-                    className="w-full h-full object-cover"
-                    onError={(e) => {
-                      // Fallback to placeholder if image fails to load
-                      (e.target as HTMLImageElement).src = '/placeholder.svg';
-                    }}
-                  />
+                  <Avatar className="w-full h-full">
+                    <AvatarImage 
+                      src={`${staff.avatar || '/placeholder.svg'}?t=${new Date().getTime()}`} 
+                      alt={staff.name} 
+                      className="w-full h-full object-cover"
+                    />
+                    <AvatarFallback className="bg-cyber-darkpurple text-cyber-cyan">
+                      {getInitials(staff.name)}
+                    </AvatarFallback>
+                  </Avatar>
                 </div>
               </div>
               <div>

@@ -19,9 +19,13 @@ const StaffCard: React.FC<StaffCardProps> = ({ staff, compact = false }) => {
         <div className="relative">
           <div className="w-16 h-16 rounded-full overflow-hidden cyber-border">
             <img 
-              src={avatar} 
+              src={avatar || '/placeholder.svg'} 
               alt={name} 
               className="w-full h-full object-cover"
+              onError={(e) => {
+                // Fallback to placeholder if image fails to load
+                (e.target as HTMLImageElement).src = '/placeholder.svg';
+              }}
             />
           </div>
           <div className="absolute -bottom-1 -right-1">

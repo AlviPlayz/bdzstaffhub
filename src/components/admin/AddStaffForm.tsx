@@ -31,6 +31,7 @@ import {
   SheetDescription,
 } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
+import { uploadStaffImage } from '@/integrations/supabase/storage';
 
 // Form schema for adding/editing staff
 const staffFormSchema = z.object({
@@ -38,6 +39,7 @@ const staffFormSchema = z.object({
   role: z.enum(['Moderator', 'Builder', 'Manager', 'Owner']),
   rank: z.string().optional(),
   description: z.string().optional(),
+  imageFile: z.instanceof(File).optional(),
 });
 
 type StaffFormValues = z.infer<typeof staffFormSchema>;
@@ -141,56 +143,8 @@ const AddStaffForm: React.FC<AddStaffFormProps> = ({ isOpen, onClose, onAddStaff
     };
     reader.readAsDataURL(file);
     
-    // Upload to Supabase storage
-    try {
-      setUploadingImage(true);
-      
-      // First, check if the bucket exists, if not we'll use a placeholder image
-      const { data: bucketExists } = await supabase.storage.getBucket('staff-avatars');
-      
-      let imageUrl = '';
-      
-      if (bucketExists) {
-        const fileName = `${Date.now()}_${file.name}`;
-        const { data, error } = await supabase.storage
-          .from('staff-avatars')
-          .upload(fileName, file);
-        
-        if (error) {
-          console.error('Error uploading image:', error);
-          // Fallback to a placeholder if upload fails
-          imageUrl = `https://i.pravatar.cc/150?img=${Math.floor(Math.random() * 70)}`;
-          setImagePreview(imageUrl);
-        } else {
-          // Get the public URL
-          const { data: urlData } = supabase.storage
-            .from('staff-avatars')
-            .getPublicUrl(fileName);
-            
-          imageUrl = urlData.publicUrl;
-          setImagePreview(imageUrl);
-        }
-      } else {
-        // Use placeholder if bucket doesn't exist
-        imageUrl = `https://i.pravatar.cc/150?img=${Math.floor(Math.random() * 70)}`;
-        setImagePreview(imageUrl);
-        console.log('Using placeholder image as storage bucket not found');
-      }
-      
-    } catch (error) {
-      console.error('Error uploading image:', error);
-      // Fallback to a placeholder in case of any error
-      const placeholderUrl = `https://i.pravatar.cc/150?img=${Math.floor(Math.random() * 70)}`;
-      setImagePreview(placeholderUrl);
-      
-      // Don't show error to user since we're using a fallback
-      toast({
-        title: "Image Preview Ready",
-        description: "Using a default avatar as fallback.",
-      });
-    } finally {
-      setUploadingImage(false);
-    }
+    // Store the actual file object to be uploaded when the form is submitted
+    form.setValue('imageFile', file);
   };
   
   const getAvailableRanks = () => {
@@ -296,86 +250,99 @@ const AddStaffForm: React.FC<AddStaffFormProps> = ({ isOpen, onClose, onAddStaff
   };
   
   const onSubmit = async (values: StaffFormValues) => {
-    if (!imagePreview) {
-      toast({
-        title: "Image required",
-        description: "Please upload a profile image",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    // Generate metrics based on role
-    let metrics: any = {};
-    let overallGrade: LetterGrade = 'B+';
-    
-    if (values.role === 'Moderator') {
-      metrics = {
-        responsiveness: { id: 'responsiveness', name: 'Responsiveness', score: staffMetrics.responsiveness || 5, letterGrade: calculateLetterGrade(staffMetrics.responsiveness || 5) as LetterGrade },
-        fairness: { id: 'fairness', name: 'Fairness', score: staffMetrics.fairness || 5, letterGrade: calculateLetterGrade(staffMetrics.fairness || 5) as LetterGrade },
-        communication: { id: 'communication', name: 'Communication', score: staffMetrics.communication || 5, letterGrade: calculateLetterGrade(staffMetrics.communication || 5) as LetterGrade },
-        conflictResolution: { id: 'conflictResolution', name: 'Conflict Resolution', score: staffMetrics.conflictResolution || 5, letterGrade: calculateLetterGrade(staffMetrics.conflictResolution || 5) as LetterGrade },
-        ruleEnforcement: { id: 'ruleEnforcement', name: 'Rule Enforcement', score: staffMetrics.ruleEnforcement || 5, letterGrade: calculateLetterGrade(staffMetrics.ruleEnforcement || 5) as LetterGrade },
-        engagement: { id: 'engagement', name: 'Engagement', score: staffMetrics.engagement || 5, letterGrade: calculateLetterGrade(staffMetrics.engagement || 5) as LetterGrade },
-        supportiveness: { id: 'supportiveness', name: 'Supportiveness', score: staffMetrics.supportiveness || 5, letterGrade: calculateLetterGrade(staffMetrics.supportiveness || 5) as LetterGrade },
-        adaptability: { id: 'adaptability', name: 'Adaptability', score: staffMetrics.adaptability || 5, letterGrade: calculateLetterGrade(staffMetrics.adaptability || 5) as LetterGrade },
-        objectivity: { id: 'objectivity', name: 'Objectivity', score: staffMetrics.objectivity || 5, letterGrade: calculateLetterGrade(staffMetrics.objectivity || 5) as LetterGrade },
-        initiative: { id: 'initiative', name: 'Initiative', score: staffMetrics.initiative || 5, letterGrade: calculateLetterGrade(staffMetrics.initiative || 5) as LetterGrade }
-      };
-    } else if (values.role === 'Builder') {
-      metrics = {
-        exterior: { id: 'exterior', name: 'Exterior', score: staffMetrics.exterior || 5, letterGrade: calculateLetterGrade(staffMetrics.exterior || 5) as LetterGrade },
-        interior: { id: 'interior', name: 'Interior', score: staffMetrics.interior || 5, letterGrade: calculateLetterGrade(staffMetrics.interior || 5) as LetterGrade },
-        decoration: { id: 'decoration', name: 'Decoration', score: staffMetrics.decoration || 5, letterGrade: calculateLetterGrade(staffMetrics.decoration || 5) as LetterGrade },
-        effort: { id: 'effort', name: 'Effort', score: staffMetrics.effort || 5, letterGrade: calculateLetterGrade(staffMetrics.effort || 5) as LetterGrade },
-        contribution: { id: 'contribution', name: 'Contribution', score: staffMetrics.contribution || 5, letterGrade: calculateLetterGrade(staffMetrics.contribution || 5) as LetterGrade },
-        communication: { id: 'communication', name: 'Communication', score: staffMetrics.communication || 5, letterGrade: calculateLetterGrade(staffMetrics.communication || 5) as LetterGrade },
-        adaptability: { id: 'adaptability', name: 'Adaptability', score: staffMetrics.adaptability || 5, letterGrade: calculateLetterGrade(staffMetrics.adaptability || 5) as LetterGrade },
-        cooperativeness: { id: 'cooperativeness', name: 'Cooperativeness', score: staffMetrics.cooperativeness || 5, letterGrade: calculateLetterGrade(staffMetrics.cooperativeness || 5) as LetterGrade },
-        creativity: { id: 'creativity', name: 'Creativity', score: staffMetrics.creativity || 5, letterGrade: calculateLetterGrade(staffMetrics.creativity || 5) as LetterGrade },
-        consistency: { id: 'consistency', name: 'Consistency', score: staffMetrics.consistency || 5, letterGrade: calculateLetterGrade(staffMetrics.consistency || 5) as LetterGrade }
-      };
-    } else {
-      // Manager or Owner
-      overallGrade = 'SSS+' as LetterGrade;
-      metrics = {
-        // All metrics set to immeasurable
-        responsiveness: { id: 'responsiveness', name: 'Responsiveness', score: 10, letterGrade: 'Immeasurable' as LetterGrade },
-        fairness: { id: 'fairness', name: 'Fairness', score: 10, letterGrade: 'Immeasurable' as LetterGrade },
-        communication: { id: 'communication', name: 'Communication', score: 10, letterGrade: 'Immeasurable' as LetterGrade },
-        conflictResolution: { id: 'conflictResolution', name: 'Conflict Resolution', score: 10, letterGrade: 'Immeasurable' as LetterGrade },
-        ruleEnforcement: { id: 'ruleEnforcement', name: 'Rule Enforcement', score: 10, letterGrade: 'Immeasurable' as LetterGrade },
-        engagement: { id: 'engagement', name: 'Engagement', score: 10, letterGrade: 'Immeasurable' as LetterGrade },
-        supportiveness: { id: 'supportiveness', name: 'Supportiveness', score: 10, letterGrade: 'Immeasurable' as LetterGrade },
-        adaptability: { id: 'adaptability', name: 'Adaptability', score: 10, letterGrade: 'Immeasurable' as LetterGrade },
-        objectivity: { id: 'objectivity', name: 'Objectivity', score: 10, letterGrade: 'Immeasurable' as LetterGrade },
-        initiative: { id: 'initiative', name: 'Initiative', score: 10, letterGrade: 'Immeasurable' as LetterGrade },
-        // Builder metrics
-        exterior: { id: 'exterior', name: 'Exterior', score: 10, letterGrade: 'Immeasurable' as LetterGrade },
-        interior: { id: 'interior', name: 'Interior', score: 10, letterGrade: 'Immeasurable' as LetterGrade },
-        decoration: { id: 'decoration', name: 'Decoration', score: 10, letterGrade: 'Immeasurable' as LetterGrade },
-        effort: { id: 'effort', name: 'Effort', score: 10, letterGrade: 'Immeasurable' as LetterGrade },
-        contribution: { id: 'contribution', name: 'Contribution', score: 10, letterGrade: 'Immeasurable' as LetterGrade },
-        cooperativeness: { id: 'cooperativeness', name: 'Cooperativeness', score: 10, letterGrade: 'Immeasurable' as LetterGrade },
-        creativity: { id: 'creativity', name: 'Creativity', score: 10, letterGrade: 'Immeasurable' as LetterGrade },
-        consistency: { id: 'consistency', name: 'Consistency', score: 10, letterGrade: 'Immeasurable' as LetterGrade }
-      };
-    }
-    
-    // Create new staff object
-    const newStaff = {
-      name: values.name,
-      role: values.role as StaffRole,
-      rank: values.rank,
-      description: values.description || '',
-      avatar: imagePreview,
-      metrics,
-      overallScore: calculateOverallScore(),
-      overallGrade
-    };
-    
     try {
       setUploadingImage(true); // Show loading state
+      
+      // If we have an image file, upload it first and get URL
+      let avatarUrl = '/placeholder.svg'; // Default placeholder
+      
+      if (values.imageFile) {
+        // Generate a temporary ID for the new staff member
+        const tempId = crypto.randomUUID();
+        
+        // Upload the image to Supabase
+        const uploadedUrl = await uploadStaffImage(values.imageFile, tempId);
+        
+        if (uploadedUrl) {
+          avatarUrl = uploadedUrl;
+        } else {
+          toast({
+            title: "Image upload issue",
+            description: "Could not upload image, using placeholder instead",
+            variant: "destructive"
+          });
+        }
+      }
+      
+      // Create metrics based on role
+      let metrics: any = {};
+      let overallGrade: LetterGrade = 'B+';
+      
+      if (values.role === 'Moderator') {
+        metrics = {
+          responsiveness: { id: 'responsiveness', name: 'Responsiveness', score: staffMetrics.responsiveness || 5, letterGrade: calculateLetterGrade(staffMetrics.responsiveness || 5) as LetterGrade },
+          fairness: { id: 'fairness', name: 'Fairness', score: staffMetrics.fairness || 5, letterGrade: calculateLetterGrade(staffMetrics.fairness || 5) as LetterGrade },
+          communication: { id: 'communication', name: 'Communication', score: staffMetrics.communication || 5, letterGrade: calculateLetterGrade(staffMetrics.communication || 5) as LetterGrade },
+          conflictResolution: { id: 'conflictResolution', name: 'Conflict Resolution', score: staffMetrics.conflictResolution || 5, letterGrade: calculateLetterGrade(staffMetrics.conflictResolution || 5) as LetterGrade },
+          ruleEnforcement: { id: 'ruleEnforcement', name: 'Rule Enforcement', score: staffMetrics.ruleEnforcement || 5, letterGrade: calculateLetterGrade(staffMetrics.ruleEnforcement || 5) as LetterGrade },
+          engagement: { id: 'engagement', name: 'Engagement', score: staffMetrics.engagement || 5, letterGrade: calculateLetterGrade(staffMetrics.engagement || 5) as LetterGrade },
+          supportiveness: { id: 'supportiveness', name: 'Supportiveness', score: staffMetrics.supportiveness || 5, letterGrade: calculateLetterGrade(staffMetrics.supportiveness || 5) as LetterGrade },
+          adaptability: { id: 'adaptability', name: 'Adaptability', score: staffMetrics.adaptability || 5, letterGrade: calculateLetterGrade(staffMetrics.adaptability || 5) as LetterGrade },
+          objectivity: { id: 'objectivity', name: 'Objectivity', score: staffMetrics.objectivity || 5, letterGrade: calculateLetterGrade(staffMetrics.objectivity || 5) as LetterGrade },
+          initiative: { id: 'initiative', name: 'Initiative', score: staffMetrics.initiative || 5, letterGrade: calculateLetterGrade(staffMetrics.initiative || 5) as LetterGrade }
+        };
+      } else if (values.role === 'Builder') {
+        metrics = {
+          exterior: { id: 'exterior', name: 'Exterior', score: staffMetrics.exterior || 5, letterGrade: calculateLetterGrade(staffMetrics.exterior || 5) as LetterGrade },
+          interior: { id: 'interior', name: 'Interior', score: staffMetrics.interior || 5, letterGrade: calculateLetterGrade(staffMetrics.interior || 5) as LetterGrade },
+          decoration: { id: 'decoration', name: 'Decoration', score: staffMetrics.decoration || 5, letterGrade: calculateLetterGrade(staffMetrics.decoration || 5) as LetterGrade },
+          effort: { id: 'effort', name: 'Effort', score: staffMetrics.effort || 5, letterGrade: calculateLetterGrade(staffMetrics.effort || 5) as LetterGrade },
+          contribution: { id: 'contribution', name: 'Contribution', score: staffMetrics.contribution || 5, letterGrade: calculateLetterGrade(staffMetrics.contribution || 5) as LetterGrade },
+          communication: { id: 'communication', name: 'Communication', score: staffMetrics.communication || 5, letterGrade: calculateLetterGrade(staffMetrics.communication || 5) as LetterGrade },
+          adaptability: { id: 'adaptability', name: 'Adaptability', score: staffMetrics.adaptability || 5, letterGrade: calculateLetterGrade(staffMetrics.adaptability || 5) as LetterGrade },
+          cooperativeness: { id: 'cooperativeness', name: 'Cooperativeness', score: staffMetrics.cooperativeness || 5, letterGrade: calculateLetterGrade(staffMetrics.cooperativeness || 5) as LetterGrade },
+          creativity: { id: 'creativity', name: 'Creativity', score: staffMetrics.creativity || 5, letterGrade: calculateLetterGrade(staffMetrics.creativity || 5) as LetterGrade },
+          consistency: { id: 'consistency', name: 'Consistency', score: staffMetrics.consistency || 5, letterGrade: calculateLetterGrade(staffMetrics.consistency || 5) as LetterGrade }
+        };
+      } else {
+        // Manager or Owner
+        overallGrade = 'SSS+' as LetterGrade;
+        metrics = {
+          // All metrics set to immeasurable
+          responsiveness: { id: 'responsiveness', name: 'Responsiveness', score: 10, letterGrade: 'Immeasurable' as LetterGrade },
+          fairness: { id: 'fairness', name: 'Fairness', score: 10, letterGrade: 'Immeasurable' as LetterGrade },
+          communication: { id: 'communication', name: 'Communication', score: 10, letterGrade: 'Immeasurable' as LetterGrade },
+          conflictResolution: { id: 'conflictResolution', name: 'Conflict Resolution', score: 10, letterGrade: 'Immeasurable' as LetterGrade },
+          ruleEnforcement: { id: 'ruleEnforcement', name: 'Rule Enforcement', score: 10, letterGrade: 'Immeasurable' as LetterGrade },
+          engagement: { id: 'engagement', name: 'Engagement', score: 10, letterGrade: 'Immeasurable' as LetterGrade },
+          supportiveness: { id: 'supportiveness', name: 'Supportiveness', score: 10, letterGrade: 'Immeasurable' as LetterGrade },
+          adaptability: { id: 'adaptability', name: 'Adaptability', score: 10, letterGrade: 'Immeasurable' as LetterGrade },
+          objectivity: { id: 'objectivity', name: 'Objectivity', score: 10, letterGrade: 'Immeasurable' as LetterGrade },
+          initiative: { id: 'initiative', name: 'Initiative', score: 10, letterGrade: 'Immeasurable' as LetterGrade },
+          // Builder metrics
+          exterior: { id: 'exterior', name: 'Exterior', score: 10, letterGrade: 'Immeasurable' as LetterGrade },
+          interior: { id: 'interior', name: 'Interior', score: 10, letterGrade: 'Immeasurable' as LetterGrade },
+          decoration: { id: 'decoration', name: 'Decoration', score: 10, letterGrade: 'Immeasurable' as LetterGrade },
+          effort: { id: 'effort', name: 'Effort', score: 10, letterGrade: 'Immeasurable' as LetterGrade },
+          contribution: { id: 'contribution', name: 'Contribution', score: 10, letterGrade: 'Immeasurable' as LetterGrade },
+          cooperativeness: { id: 'cooperativeness', name: 'Cooperativeness', score: 10, letterGrade: 'Immeasurable' as LetterGrade },
+          creativity: { id: 'creativity', name: 'Creativity', score: 10, letterGrade: 'Immeasurable' as LetterGrade },
+          consistency: { id: 'consistency', name: 'Consistency', score: 10, letterGrade: 'Immeasurable' as LetterGrade }
+        };
+      }
+      
+      // Create new staff object
+      const newStaff = {
+        name: values.name,
+        role: values.role as StaffRole,
+        rank: values.rank,
+        description: values.description || '',
+        avatar: avatarUrl,
+        metrics,
+        overallScore: calculateOverallScore(),
+        overallGrade
+      };
+      
       await onAddStaff(newStaff);
       
       // Reset states after successful submission

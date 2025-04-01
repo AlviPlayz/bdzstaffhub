@@ -15,7 +15,9 @@ const createMetric = (name: string, score: number): PerformanceMetric => {
 // Helper function to transform database row to StaffMember
 const transformToStaffMember = (row: any, role: StaffRole): StaffMember => {
   let metrics: any = {};
-  let avatar = row.profile_image_url || 'https://i.pravatar.cc/150?img=1';
+  
+  // Get the avatar URL, use placeholder if not available
+  let avatar = row.profile_image_url || '/placeholder.svg';
   
   // Create metrics based on role
   if (role === 'Moderator') {
@@ -259,6 +261,11 @@ export const updateStaffMember = async (staff: StaffMember) => {
   try {
     const dbData = transformToDatabase(staff);
     
+    // Ensure avatar URL is correctly set
+    if (staff.avatar && staff.avatar !== '/placeholder.svg') {
+      dbData.profile_image_url = staff.avatar;
+    }
+    
     if (staff.role === 'Moderator') {
       const { error } = await supabase
         .from('moderators')
@@ -278,6 +285,9 @@ export const updateStaffMember = async (staff: StaffMember) => {
         .eq('id', staff.id);
       if (error) throw error;
     }
+    
+    // Cleanup previous images for this staff member
+    await cleanupPreviousStaffImages(staff.id);
     
     return staff; // Return the updated staff member
   } catch (error) {
@@ -482,6 +492,12 @@ export const createStaffMember = async (data: Omit<StaffMember, 'id'>) => {
     const staffData = data as StaffMember;
     staffData.id = crypto.randomUUID(); // Temporary ID for transformation
     const dbData = transformToDatabase(staffData);
+    
+    // Ensure avatar URL is correctly set
+    if (data.avatar && data.avatar !== '/placeholder.svg') {
+      dbData.profile_image_url = data.avatar;
+    }
+    
     let result;
     
     if (data.role === 'Moderator') {
@@ -528,7 +544,15 @@ export const createStaffMember = async (data: Omit<StaffMember, 'id'>) => {
       throw new Error('Failed to create staff member');
     }
 
-    return transformToStaffMember(result, data.role);
+    // Transform the result back to a StaffMember before returning
+    const transformedResult = transformToStaffMember(result, data.role);
+    
+    // Make sure the avatar URL is preserved
+    if (data.avatar && data.avatar !== '/placeholder.svg') {
+      transformedResult.avatar = data.avatar;
+    }
+    
+    return transformedResult;
   } catch (error) {
     console.error('Error creating staff member:', error);
     throw error;
@@ -571,5 +595,122 @@ export const deleteStaffMember = async (id: string, role: StaffRole) => {
     console.error('Error deleting staff member:', error);
     throw error;
     return false;
+  }
+};
+
+/**
+ * Handle staff image uploads and update profile image URL in database
+ */
+export const updateStaffAvatar = async (file: File, staffId: string, role: StaffRole): Promise<string | null> => {
+  try {
+    // Upload the image to storage and get the URL
+    const imageUrl = await uploadStaffImage(file, staffId);
+    
+    if (!imageUrl) {
+      return null;
+    }
+    
+    // Update the staff member's profile image in the database
+    if (role === 'Moderator') {
+      await supabase
+        .from('moderators')
+        .update({ profile_image_url: imageUrl })
+        .eq('id', staffId);
+    } else if (role === 'Builder') {
+      await supabase
+        .from('builders')
+        .update({ profile_image_url: imageUrl })
+        .eq('id', staffId);
+    } else if (role === 'Manager' || role === 'Owner') {
+      await supabase
+        .from('managers')
+        .update({ profile_image_url: imageUrl })
+        .eq('id', staffId);
+    }
+    
+    // Cleanup previous images to save storage
+    await cleanupPreviousStaffImages(staffId);
+    
+    return imageUrl;
+  } catch (error) {
+    console.error('Error updating staff avatar:', error);
+    return null;
+  }
+};
+
+/**
+ * Get a staff member's avatar URL
+ * If the image doesn't exist, returns a placeholder
+ * @param staffId ID of the staff member
+ * @returns Public URL of the image or a placeholder
+ */
+export const getStaffImageUrl = async (staffId: string): Promise<string> => {
+  try {
+    // Try to find the image by listing the files with the staff ID prefix
+    const { data, error } = await supabase.storage
+      .from('staff-avatars')
+      .list('staff', {
+        limit: 1,
+        search: staffId
+      });
+    
+    if (error || !data || data.length === 0) {
+      return '/placeholder.svg';
+    }
+    
+    // Get the latest file for this staff
+    const latestFile = data.sort((a, b) => {
+      // Sort by created_at in descending order (newest first)
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    })[0];
+    
+    // Get the public URL with a timestamp to prevent caching
+    const timestamp = new Date().getTime();
+    const { data: publicUrlData } = supabase.storage
+      .from('staff-avatars')
+      .getPublicUrl(`staff/${latestFile.name}?t=${timestamp}`);
+    
+    return publicUrlData.publicUrl;
+  } catch (error) {
+    console.error('Error getting staff image:', error);
+    return '/placeholder.svg';
+  }
+};
+
+/**
+ * Delete all previous images for a staff member
+ * This helps clean up storage when updating images
+ * @param staffId ID of the staff member
+ */
+export const cleanupPreviousStaffImages = async (staffId: string): Promise<void> => {
+  try {
+    // List all files with the staff ID prefix
+    const { data, error } = await supabase.storage
+      .from('staff-avatars')
+      .list('staff', {
+        search: staffId
+      });
+    
+    if (error || !data || data.length === 0) {
+      return;
+    }
+    
+    // Get paths of all files to delete (skipping the most recent one)
+    const filesToDelete = data
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      .slice(1) // Skip the most recent file
+      .map(file => `staff/${file.name}`);
+    
+    if (filesToDelete.length > 0) {
+      const { error: deleteError } = await supabase.storage
+        .from('staff-avatars')
+        .remove(filesToDelete);
+      
+      if (deleteError) {
+        console.error('Error cleaning up previous images:', deleteError.message);
+      }
+    }
+  } catch (error) {
+    console.error('Error in cleanup of staff images:', error);
   }
 };

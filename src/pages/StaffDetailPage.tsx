@@ -88,9 +88,13 @@ const StaffDetailPage: React.FC = () => {
               <div className="relative">
                 <div className="w-20 h-20 rounded-full overflow-hidden cyber-border">
                   <img 
-                    src={staff.avatar} 
+                    src={staff.avatar || '/placeholder.svg'} 
                     alt={staff.name} 
                     className="w-full h-full object-cover"
+                    onError={(e) => {
+                      // Fallback to placeholder if image fails to load
+                      (e.target as HTMLImageElement).src = '/placeholder.svg';
+                    }}
                   />
                 </div>
               </div>

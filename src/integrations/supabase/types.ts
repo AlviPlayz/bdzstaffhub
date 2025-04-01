@@ -9,7 +9,210 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      builders: {
+        Row: {
+          adaptability: number | null
+          communication: number | null
+          consistency: number | null
+          contribution: number | null
+          cooperativeness: number | null
+          created_at: string | null
+          creativity: number | null
+          decoration: number | null
+          effort: number | null
+          exterior: number | null
+          id: string
+          interior: number | null
+          name: string
+          overall_grade: string
+          profile_image_url: string | null
+          rank: string
+          staff_id: string
+        }
+        Insert: {
+          adaptability?: number | null
+          communication?: number | null
+          consistency?: number | null
+          contribution?: number | null
+          cooperativeness?: number | null
+          created_at?: string | null
+          creativity?: number | null
+          decoration?: number | null
+          effort?: number | null
+          exterior?: number | null
+          id?: string
+          interior?: number | null
+          name: string
+          overall_grade: string
+          profile_image_url?: string | null
+          rank: string
+          staff_id: string
+        }
+        Update: {
+          adaptability?: number | null
+          communication?: number | null
+          consistency?: number | null
+          contribution?: number | null
+          cooperativeness?: number | null
+          created_at?: string | null
+          creativity?: number | null
+          decoration?: number | null
+          effort?: number | null
+          exterior?: number | null
+          id?: string
+          interior?: number | null
+          name?: string
+          overall_grade?: string
+          profile_image_url?: string | null
+          rank?: string
+          staff_id?: string
+        }
+        Relationships: []
+      }
+      managers: {
+        Row: {
+          adaptability: number | null
+          communication: number | null
+          conflict_resolution: number | null
+          consistency: number | null
+          contribution: number | null
+          cooperativeness: number | null
+          created_at: string | null
+          creativity: number | null
+          decoration: number | null
+          effort: number | null
+          engagement: number | null
+          exterior: number | null
+          fairness: number | null
+          id: string
+          initiative: number | null
+          interior: number | null
+          name: string
+          objectivity: number | null
+          overall_grade: string
+          profile_image_url: string | null
+          rank: string
+          responsiveness: number | null
+          rule_enforcement: number | null
+          staff_id: string
+          supportiveness: number | null
+        }
+        Insert: {
+          adaptability?: number | null
+          communication?: number | null
+          conflict_resolution?: number | null
+          consistency?: number | null
+          contribution?: number | null
+          cooperativeness?: number | null
+          created_at?: string | null
+          creativity?: number | null
+          decoration?: number | null
+          effort?: number | null
+          engagement?: number | null
+          exterior?: number | null
+          fairness?: number | null
+          id?: string
+          initiative?: number | null
+          interior?: number | null
+          name: string
+          objectivity?: number | null
+          overall_grade: string
+          profile_image_url?: string | null
+          rank: string
+          responsiveness?: number | null
+          rule_enforcement?: number | null
+          staff_id: string
+          supportiveness?: number | null
+        }
+        Update: {
+          adaptability?: number | null
+          communication?: number | null
+          conflict_resolution?: number | null
+          consistency?: number | null
+          contribution?: number | null
+          cooperativeness?: number | null
+          created_at?: string | null
+          creativity?: number | null
+          decoration?: number | null
+          effort?: number | null
+          engagement?: number | null
+          exterior?: number | null
+          fairness?: number | null
+          id?: string
+          initiative?: number | null
+          interior?: number | null
+          name?: string
+          objectivity?: number | null
+          overall_grade?: string
+          profile_image_url?: string | null
+          rank?: string
+          responsiveness?: number | null
+          rule_enforcement?: number | null
+          staff_id?: string
+          supportiveness?: number | null
+        }
+        Relationships: []
+      }
+      moderators: {
+        Row: {
+          adaptability: number | null
+          communication: number | null
+          conflict_resolution: number | null
+          created_at: string | null
+          engagement: number | null
+          fairness: number | null
+          id: string
+          initiative: number | null
+          name: string
+          objectivity: number | null
+          overall_grade: string
+          profile_image_url: string | null
+          rank: string
+          responsiveness: number | null
+          rule_enforcement: number | null
+          staff_id: string
+          supportiveness: number | null
+        }
+        Insert: {
+          adaptability?: number | null
+          communication?: number | null
+          conflict_resolution?: number | null
+          created_at?: string | null
+          engagement?: number | null
+          fairness?: number | null
+          id?: string
+          initiative?: number | null
+          name: string
+          objectivity?: number | null
+          overall_grade: string
+          profile_image_url?: string | null
+          rank: string
+          responsiveness?: number | null
+          rule_enforcement?: number | null
+          staff_id: string
+          supportiveness?: number | null
+        }
+        Update: {
+          adaptability?: number | null
+          communication?: number | null
+          conflict_resolution?: number | null
+          created_at?: string | null
+          engagement?: number | null
+          fairness?: number | null
+          id?: string
+          initiative?: number | null
+          name?: string
+          objectivity?: number | null
+          overall_grade?: string
+          profile_image_url?: string | null
+          rank?: string
+          responsiveness?: number | null
+          rule_enforcement?: number | null
+          staff_id?: string
+          supportiveness?: number | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

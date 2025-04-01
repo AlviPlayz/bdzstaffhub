@@ -38,3 +38,40 @@ export const initializeStorage = async () => {
     console.info('Using placeholder image as storage bucket not found');
   }
 };
+
+/**
+ * Upload a staff avatar image and get a public URL
+ * @param file Image file to upload
+ * @param staffId ID of the staff member
+ * @returns Public URL of the uploaded image or null if failed
+ */
+export const uploadStaffImage = async (file: File, staffId: string): Promise<string | null> => {
+  try {
+    // Create a unique file path for this staff member with a timestamp to prevent caching
+    const timestamp = new Date().getTime();
+    const filePath = `staff/${staffId}_${timestamp}`;
+    
+    // Upload the image
+    const { data, error } = await supabase.storage
+      .from('staff-avatars')
+      .upload(filePath, file, { 
+        upsert: true,
+        cacheControl: 'no-cache'
+      });
+    
+    if (error) {
+      console.error('Image upload failed:', error.message);
+      return null;
+    }
+    
+    // Get the public URL with no-cache parameter
+    const { data: publicUrlData } = supabase.storage
+      .from('staff-avatars')
+      .getPublicUrl(`${filePath}?t=${timestamp}`);
+    
+    return publicUrlData.publicUrl;
+  } catch (error) {
+    console.error('Error uploading staff image:', error);
+    return null;
+  }
+};

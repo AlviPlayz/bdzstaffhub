@@ -15,7 +15,7 @@ const StaffCard: React.FC<StaffCardProps> = ({ staff, compact = false }) => {
   
   return (
     <div className="cyber-panel rounded-lg transition-all duration-300 hover:scale-[1.02]">
-      <div className="flex items-center gap-4 mb-4">
+      <div className="flex items-center gap-4">
         <div className="relative">
           <div className="w-16 h-16 rounded-full overflow-hidden cyber-border">
             <img 
@@ -45,7 +45,7 @@ const StaffCard: React.FC<StaffCardProps> = ({ staff, compact = false }) => {
       
       <div className="mt-4 flex justify-end">
         <Link to={`/staff/${staff.id}`} className="cyber-button text-sm py-1 px-3 rounded flex items-center gap-1">
-          View Details <ArrowUpRight size={14} />
+          View Profile <ArrowUpRight size={14} />
         </Link>
       </div>
     </div>

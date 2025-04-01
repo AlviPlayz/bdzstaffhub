@@ -1,4 +1,3 @@
-
 // src/services/supabaseService.ts
 import { supabase } from '@/integrations/supabase/client';
 import { StaffMember, StaffRole, LetterGrade, ModeratorMetrics, BuilderMetrics, ManagerMetrics, PerformanceMetric } from '../types/staff';
@@ -543,8 +542,12 @@ export const uploadStaffImage = async (file: File, staffId: string, role: StaffR
       return null;
     }
     
-    // Get the public URL
-    const imageUrl = `${SUPABASE_URL}/storage/v1/object/public/staff-avatars/${filePath}`;
+    // Get the public URL - use the correct method to get the URL
+    const { data: publicUrlData } = supabase.storage
+      .from('staff-avatars')
+      .getPublicUrl(filePath);
+    
+    const imageUrl = publicUrlData.publicUrl;
     
     // Update the staff member's profile image in the database
     if (role === 'Moderator') {

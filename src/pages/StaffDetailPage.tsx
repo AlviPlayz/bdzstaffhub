@@ -4,6 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { getStaffMemberById } from '@/services/supabaseService';
 import { StaffMember } from '@/types/staff';
 import StaffCard from '@/components/StaffCard';
+import PerformanceBar from '@/components/PerformanceBar';
 import LoadingState from '@/components/LoadingState';
 import { ArrowLeft } from 'lucide-react';
 
@@ -81,7 +82,46 @@ const StaffDetailPage: React.FC = () => {
       
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div>
-          <StaffCard staff={staff} compact={false} />
+          {/* Staff basic info */}
+          <div className="cyber-panel mb-6">
+            <div className="flex items-center gap-4 mb-4">
+              <div className="relative">
+                <div className="w-20 h-20 rounded-full overflow-hidden cyber-border">
+                  <img 
+                    src={staff.avatar} 
+                    alt={staff.name} 
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              </div>
+              <div>
+                <h2 className="text-2xl font-digital text-white">{staff.name}</h2>
+                <p className="text-cyber-cyan">{staff.role}</p>
+                <div className="mt-2 flex items-center">
+                  <span className="mr-2">Overall Grade:</span>
+                  <span className={`letter-grade text-lg ${staff.role === 'Manager' || staff.role === 'Owner' ? 'grade-sss' : ''}`}>
+                    {staff.role === 'Manager' || staff.role === 'Owner' ? 'SSS+' : staff.overallGrade}
+                  </span>
+                </div>
+                <div className="mt-1">
+                  <span className="mr-2">Score:</span>
+                  <span className="text-cyber-cyan font-bold">
+                    {staff.role === 'Manager' || staff.role === 'Owner' ? 'Immeasurable' : staff.overallScore.toFixed(1)}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          {/* Performance Metrics */}
+          <div className="cyber-panel">
+            <h2 className="text-xl font-digital text-cyber-cyan mb-4">Performance Metrics</h2>
+            <div className="max-h-[400px] overflow-y-auto pr-2 space-y-3">
+              {Object.entries(staff.metrics).map(([key, metric]) => (
+                <PerformanceBar key={key} metric={metric} staffRole={staff.role} />
+              ))}
+            </div>
+          </div>
         </div>
         
         <div className="cyber-panel">

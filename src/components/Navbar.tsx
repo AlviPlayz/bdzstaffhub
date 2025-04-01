@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { User, LogOut, BarChart3, Shield, Hammer, Trophy } from 'lucide-react';
+import { User, LogOut, BarChart3, Shield, Hammer, Trophy, Home } from 'lucide-react';
 import AdminAccessModal from '@/components/AdminAccessModal';
 
 const Navbar: React.FC = () => {
@@ -69,6 +69,13 @@ const Navbar: React.FC = () => {
             </div>
             
             <div className="flex items-center gap-2">
+              <Link 
+                to="/"
+                className="flex items-center gap-1 text-white hover:text-cyber-cyan text-sm font-cyber px-3 py-1 border border-cyber-cyan rounded-md transition-all duration-200 hover:bg-cyber-cyan/10 mr-2"
+              >
+                <Home size={16} />
+                Home
+              </Link>
               <button 
                 onClick={logout}
                 className="flex items-center gap-1 text-white hover:text-cyber-cyan text-sm font-cyber px-3 py-1 border border-cyber-cyan rounded-md transition-all duration-200 hover:bg-cyber-cyan/10"

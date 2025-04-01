@@ -1,7 +1,6 @@
 
 import React from 'react';
 import { StaffMember } from '@/types/staff';
-import PerformanceBar from './PerformanceBar';
 import { getGradeColorClass } from '@/utils/gradeUtils';
 import { ArrowUpRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -12,11 +11,8 @@ interface StaffCardProps {
 }
 
 const StaffCard: React.FC<StaffCardProps> = ({ staff, compact = false }) => {
-  const { name, role, avatar, metrics, overallScore, overallGrade } = staff;
+  const { name, role, avatar, overallScore, overallGrade } = staff;
   
-  // Get the first 3 metrics for compact view
-  const metricEntries = Object.entries(metrics).slice(0, compact ? 3 : undefined);
-
   return (
     <div className="cyber-panel rounded-lg transition-all duration-300 hover:scale-[1.02]">
       <div className="flex items-center gap-4 mb-4">
@@ -38,24 +34,20 @@ const StaffCard: React.FC<StaffCardProps> = ({ staff, compact = false }) => {
           <h3 className="text-lg font-digital text-white">{name}</h3>
           <div className="flex justify-between items-center">
             <p className="text-sm text-cyber-cyan">{role}</p>
-            <p className="text-sm">Score: <span className="text-cyber-cyan font-bold">{overallScore.toFixed(1)}</span></p>
+            <p className="text-sm">
+              Score: <span className="text-cyber-cyan font-bold">
+                {role === 'Manager' || role === 'Owner' ? 'Immeasurable' : overallScore.toFixed(1)}
+              </span>
+            </p>
           </div>
         </div>
       </div>
       
-      <div className="space-y-2">
-        {metricEntries.map(([key, metric]) => (
-          <PerformanceBar key={key} metric={metric} />
-        ))}
+      <div className="mt-4 flex justify-end">
+        <Link to={`/staff/${staff.id}`} className="cyber-button text-sm py-1 px-3 rounded flex items-center gap-1">
+          View Details <ArrowUpRight size={14} />
+        </Link>
       </div>
-      
-      {compact && (
-        <div className="mt-4 flex justify-end">
-          <Link to={`/staff/${staff.id}`} className="cyber-button text-sm py-1 px-3 rounded flex items-center gap-1">
-            View Details <ArrowUpRight size={14} />
-          </Link>
-        </div>
-      )}
     </div>
   );
 };

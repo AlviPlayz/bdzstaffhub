@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { StaffMember, StaffRole, LetterGrade, ModeratorMetrics, BuilderMetrics, ManagerMetrics, PerformanceMetric } from '@/types/staff';
 import { StaffTableName } from '@/types/database';
@@ -369,8 +368,80 @@ export const getStaffMemberById = async (staffId: string): Promise<StaffMember |
   }
 };
 
+// Function to handle staff image uploads and save permanent URLs
+export const uploadStaffImage = async (file: File, staffId: string, role: StaffRole): Promise<string | null> => {
+  try {
+    // Create a unique file path for this staff member
+    const filePath = `staff/${role.toLowerCase()}/${staffId}`;
+    
+    // Upload the image
+    const { data, error } = await supabase.storage
+      .from('staff-avatars')
+      .upload(filePath, file, { 
+        upsert: true,
+        cacheControl: '3600'
+      });
+    
+    if (error) {
+      console.error('Image upload failed:', error.message);
+      return null;
+    }
+    
+    // Get the public URL with a timestamp to prevent caching
+    const timestamp = new Date().getTime();
+    const { data: publicUrlData } = supabase.storage
+      .from('staff-avatars')
+      .getPublicUrl(`${filePath}?t=${timestamp}`);
+    
+    const imageUrl = publicUrlData.publicUrl;
+    
+    // Update the staff member's profile image in the database
+    if (role === 'Moderator') {
+      await supabase
+        .from('moderators')
+        .update({ profile_image_url: imageUrl })
+        .eq('id', staffId);
+    } else if (role === 'Builder') {
+      await supabase
+        .from('builders')
+        .update({ profile_image_url: imageUrl })
+        .eq('id', staffId);
+    } else if (role === 'Manager' || role === 'Owner') {
+      await supabase
+        .from('managers')
+        .update({ profile_image_url: imageUrl })
+        .eq('id', staffId);
+    }
+    
+    return imageUrl;
+  } catch (error) {
+    console.error('Error uploading staff image:', error);
+    return null;
+  }
+};
+
+// Function to calculate letter grade based on score
+export const calculateLetterGrade = (score: number): LetterGrade => {
+  // For Managers and Owners, always return SSS+
+  if (score >= 9) return 'S+';
+  if (score >= 8) return 'S';
+  if (score >= 7.5) return 'A+';
+  if (score >= 7) return 'A';
+  if (score >= 6.5) return 'B+';
+  if (score >= 6) return 'B';
+  if (score >= 5) return 'C';
+  if (score >= 4) return 'D';
+  if (score >= 3) return 'E';
+  return 'E-';
+};
+
 // Function to calculate overall score and grade
 export const calculateOverallScoreAndGrade = (staff: StaffMember): { overallScore: number; overallGrade: LetterGrade } => {
+  // Special case for Managers and Owners
+  if (staff.role === 'Manager' || staff.role === 'Owner') {
+    return { overallScore: 10, overallGrade: 'SSS+' };
+  }
+
   const metricValues = Object.values(staff.metrics);
   
   // Calculate overall score with type safety
@@ -386,29 +457,9 @@ export const calculateOverallScoreAndGrade = (staff: StaffMember): { overallScor
   });
   
   const average = validMetrics > 0 ? parseFloat((totalScore / validMetrics).toFixed(1)) : 0;
-
-  let overallGrade: LetterGrade;
-  if (staff.role === 'Manager' || staff.role === 'Owner') {
-    overallGrade = 'SSS+';
-  } else {
-    overallGrade = calculateLetterGrade(average);
-  }
+  const overallGrade = calculateLetterGrade(average);
 
   return { overallScore: average, overallGrade };
-};
-
-// Function to calculate letter grade based on score
-export const calculateLetterGrade = (score: number): LetterGrade => {
-  if (score >= 9) return 'S+';
-  if (score >= 8) return 'S';
-  if (score >= 7.5) return 'A+';
-  if (score >= 7) return 'A';
-  if (score >= 6.5) return 'B+';
-  if (score >= 6) return 'B';
-  if (score >= 5) return 'C';
-  if (score >= 4) return 'D';
-  if (score >= 3) return 'E';
-  return 'E-';
 };
 
 // Function to subscribe to real-time updates
@@ -520,56 +571,5 @@ export const deleteStaffMember = async (id: string, role: StaffRole) => {
     console.error('Error deleting staff member:', error);
     throw error;
     return false;
-  }
-};
-
-// Function to handle staff image uploads and save permanent URLs
-export const uploadStaffImage = async (file: File, staffId: string, role: StaffRole): Promise<string | null> => {
-  try {
-    // Create a unique file path for this staff member
-    const filePath = `staff/${role.toLowerCase()}/${staffId}`;
-    
-    // Upload the image
-    const { data, error } = await supabase.storage
-      .from('staff-avatars')
-      .upload(filePath, file, { 
-        upsert: true,
-        cacheControl: '3600'
-      });
-    
-    if (error) {
-      console.error('Image upload failed:', error.message);
-      return null;
-    }
-    
-    // Get the public URL - use the correct method to get the URL
-    const { data: publicUrlData } = supabase.storage
-      .from('staff-avatars')
-      .getPublicUrl(filePath);
-    
-    const imageUrl = publicUrlData.publicUrl;
-    
-    // Update the staff member's profile image in the database
-    if (role === 'Moderator') {
-      await supabase
-        .from('moderators')
-        .update({ profile_image_url: imageUrl })
-        .eq('id', staffId);
-    } else if (role === 'Builder') {
-      await supabase
-        .from('builders')
-        .update({ profile_image_url: imageUrl })
-        .eq('id', staffId);
-    } else if (role === 'Manager' || role === 'Owner') {
-      await supabase
-        .from('managers')
-        .update({ profile_image_url: imageUrl })
-        .eq('id', staffId);
-    }
-    
-    return imageUrl;
-  } catch (error) {
-    console.error('Error uploading staff image:', error);
-    return null;
   }
 };

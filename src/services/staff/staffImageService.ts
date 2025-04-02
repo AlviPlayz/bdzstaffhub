@@ -7,6 +7,8 @@ import { StaffRole } from '@/types/staff';
  */
 export const initializeStaffImageStorage = async (): Promise<void> => {
   try {
+    console.log('Initializing staff image storage...');
+    
     // Check if staff_images bucket exists
     const { data: buckets, error } = await supabase.storage.listBuckets();
     
@@ -18,6 +20,7 @@ export const initializeStaffImageStorage = async (): Promise<void> => {
     // Create staff_images bucket if it doesn't exist
     if (!buckets.find(bucket => bucket.name === 'staff_images')) {
       try {
+        console.log('Creating staff_images bucket...');
         const { error: createError } = await supabase.storage.createBucket('staff_images', {
           public: true,
           fileSizeLimit: 1024 * 1024 * 5, // 5MB limit
@@ -26,14 +29,14 @@ export const initializeStaffImageStorage = async (): Promise<void> => {
         if (createError) {
           console.error('Error creating staff_images bucket:', createError.message);
         } else {
-          console.log('Created staff_images storage bucket');
+          console.log('Created staff_images storage bucket successfully');
           
-          // Set bucket to public
+          // Set public policy for the bucket
           const { error: policyError } = await supabase.storage.from('staff_images')
-            .createSignedUrl('placeholder.jpg', 60);
+            .createSignedUrl('dummy.txt', 60);
             
-          if (policyError && policyError.message.includes('policy')) {
-            console.error('Error with bucket policy, trying to set public access');
+          if (policyError) {
+            console.log('Note: Policy setup might require manual configuration in Supabase dashboard');
           }
         }
       } catch (bucketError) {
@@ -52,12 +55,17 @@ export const initializeStaffImageStorage = async (): Promise<void> => {
  */
 export const updateStaffAvatar = async (file: File, staffId: string, role: StaffRole): Promise<string | null> => {
   try {
+    console.log(`Updating avatar for staff ${staffId} (${role})...`);
+    
     // Upload the image to storage and get the URL
     const imageUrl = await uploadStaffImage(file, staffId, role);
     
     if (!imageUrl) {
+      console.error('Failed to get image URL after upload');
       return null;
     }
+    
+    console.log(`Successfully uploaded image, URL: ${imageUrl}`);
     
     // Update the staff member's profile image in the database
     const tableName = getTableNameForRole(role);
@@ -71,6 +79,8 @@ export const updateStaffAvatar = async (file: File, staffId: string, role: Staff
       console.error(`Error updating ${role} avatar in database:`, error);
       return null;
     }
+    
+    console.log(`Successfully updated ${staffId} avatar in database`);
     
     // Cleanup previous images to save storage
     await cleanupPreviousImages(staffId);
@@ -93,6 +103,8 @@ export const uploadStaffImage = async (file: File, staffId: string, role: StaffR
     const fileName = `staff-${staffId}-${Date.now()}.${fileExt}`;
     const filePath = `${role.toLowerCase()}/${fileName}`;
     
+    console.log(`Uploading to path: ${filePath}`);
+    
     // Upload the image
     const { data, error } = await supabase.storage
       .from('staff_images')
@@ -106,6 +118,8 @@ export const uploadStaffImage = async (file: File, staffId: string, role: StaffR
       return null;
     }
     
+    console.log('Image upload successful, getting public URL');
+    
     // Get the public URL with cache-busting parameter
     const timestamp = Date.now();
     const { data: publicUrlData } = supabase.storage
@@ -117,6 +131,7 @@ export const uploadStaffImage = async (file: File, staffId: string, role: StaffR
       return null;
     }
     
+    console.log(`Generated public URL: ${publicUrlData.publicUrl}`);
     return publicUrlData.publicUrl;
   } catch (error) {
     console.error('Error uploading staff image:', error);
@@ -150,7 +165,7 @@ export const getStaffImageUrl = async (staffId: string): Promise<string> => {
       .filter(file => file.name.includes(`staff-${staffId}`))
       .sort((a, b) => {
         // Sort by created_at in descending order (newest first)
-        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
       })[0];
     
     if (!latestFile) {
@@ -163,6 +178,10 @@ export const getStaffImageUrl = async (staffId: string): Promise<string> => {
     const { data: publicUrlData } = supabase.storage
       .from('staff_images')
       .getPublicUrl(`${latestFile.name}?t=${timestamp}`);
+    
+    if (!publicUrlData.publicUrl) {
+      return '/placeholder.svg';
+    }
     
     return publicUrlData.publicUrl;
   } catch (error) {
@@ -192,7 +211,7 @@ export const cleanupPreviousImages = async (staffId: string): Promise<void> => {
     // Get paths of all files to delete (skipping the most recent one)
     const filesToDelete = data
       .filter(file => file.name.includes(`staff-${staffId}`))
-      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      .sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
       .slice(1) // Skip the most recent file
       .map(file => file.name);
     

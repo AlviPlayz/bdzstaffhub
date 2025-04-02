@@ -30,13 +30,34 @@ const StaffCard: React.FC<StaffCardProps> = ({ staff, compact = false }) => {
       return '/placeholder.svg';
     }
     
-    // Add a timestamp to bust cache
-    const url = new URL(avatar);
-    if (!url.searchParams.has('t')) {
+    try {
+      // Add a timestamp to bust cache
+      const url = new URL(avatar);
       url.searchParams.set('t', Date.now().toString());
+      return url.toString();
+    } catch (e) {
+      // If URL parsing fails, just return the avatar as is with timestamp
+      console.log('Invalid avatar URL format:', avatar);
+      const separator = avatar.includes('?') ? '&' : '?';
+      return `${avatar}${separator}t=${Date.now()}`;
     }
-    return url.toString();
   }, [avatar, imageError]);
+  
+  // Special handling for Manager/Owner scores
+  const displayScore = React.useMemo(() => {
+    if (role === 'Manager' || role === 'Owner') {
+      return 'Immeasurable';
+    }
+    return overallScore.toFixed(1);
+  }, [role, overallScore]);
+  
+  // Special handling for Manager/Owner grades
+  const displayGrade = React.useMemo(() => {
+    if (role === 'Manager' || role === 'Owner') {
+      return 'SSS+';
+    }
+    return overallGrade;
+  }, [role, overallGrade]);
   
   return (
     <div className="cyber-panel rounded-lg transition-all duration-300 hover:scale-[1.02]">
@@ -59,8 +80,8 @@ const StaffCard: React.FC<StaffCardProps> = ({ staff, compact = false }) => {
             </Avatar>
           </div>
           <div className="absolute -bottom-1 -right-1">
-            <span className={`${getGradeColorClass(overallGrade)} letter-grade`}>
-              {overallGrade}
+            <span className={`${getGradeColorClass(displayGrade)} letter-grade`}>
+              {displayGrade}
             </span>
           </div>
         </div>
@@ -73,7 +94,7 @@ const StaffCard: React.FC<StaffCardProps> = ({ staff, compact = false }) => {
             </div>
             <p className="text-sm">
               Score: <span className="text-cyber-cyan font-bold">
-                {role === 'Manager' || role === 'Owner' ? 'Immeasurable' : overallScore.toFixed(1)}
+                {displayScore}
               </span>
             </p>
           </div>

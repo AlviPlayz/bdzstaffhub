@@ -1,9 +1,13 @@
 
-import { LetterGrade, StaffMember, PerformanceMetric } from '@/types/staff';
+import { LetterGrade, StaffMember, PerformanceMetric, StaffRole } from '@/types/staff';
 
 // Function to calculate letter grade based on score
-export const calculateLetterGrade = (score: number): LetterGrade => {
+export const calculateLetterGrade = (score: number, role?: StaffRole): LetterGrade => {
   // For Managers and Owners, always return SSS+
+  if (role === 'Manager' || role === 'Owner') {
+    return 'SSS+';
+  }
+  
   if (score >= 9) return 'S+';
   if (score >= 8) return 'S';
   if (score >= 7.5) return 'A+';

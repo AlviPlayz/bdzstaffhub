@@ -2,7 +2,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { StaffMember, StaffRole } from '@/types/staff';
 import { transformToStaffMember, transformToDatabase } from './staffTransforms';
-import { cleanupPreviousImages } from '@/integrations/supabase/storage';
+import { cleanupPreviousImages } from './staffImageService';
 
 // Function to add a new staff member
 export const addStaffMember = async (data: any) => {
@@ -120,7 +120,6 @@ export const removeStaffMember = async (staffId: string, role: StaffRole) => {
     if (error) {
       console.error('Error removing staff member:', error);
       throw error;
-      return false;
     }
     
     return true;
@@ -136,8 +135,12 @@ export const createStaffMember = async (data: Omit<StaffMember, 'id'>) => {
   try {
     console.log(`createStaffMember: Adding new ${data.role} - ${data.name}`);
     
-    const staffData = data as StaffMember;
-    staffData.id = crypto.randomUUID(); // Temporary ID for transformation
+    // Make a deep copy of the staff data
+    const staffData = {
+      ...data,
+      id: crypto.randomUUID() // Temporary ID for transformation
+    } as StaffMember;
+    
     const dbData = transformToDatabase(staffData);
     
     // Ensure avatar URL is correctly set
@@ -241,7 +244,6 @@ export const deleteStaffMember = async (id: string, role: StaffRole) => {
     if (error) {
       console.error('Error deleting staff member:', error);
       throw error;
-      return false;
     }
     
     return true;

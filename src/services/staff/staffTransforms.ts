@@ -3,7 +3,17 @@ import { StaffMember, StaffRole, LetterGrade, ModeratorMetrics, BuilderMetrics, 
 import { calculateLetterGrade } from './staffGrading';
 
 // Function to create a performance metric
-export const createMetric = (name: string, score: number): PerformanceMetric => {
+export const createMetric = (name: string, score: number, role?: StaffRole): PerformanceMetric => {
+  // For Manager and Owner roles, set special scores
+  if (role === 'Manager' || role === 'Owner') {
+    return {
+      id: name.toLowerCase().replace(/\s+/g, '-'),
+      name,
+      score: 10, // Maximum score for display purposes
+      letterGrade: 'SSS+' as LetterGrade
+    };
+  }
+  
   return {
     id: name.toLowerCase().replace(/\s+/g, '-'),
     name,
@@ -48,41 +58,54 @@ export const transformToStaffMember = (row: any, role: StaffRole): StaffMember =
       consistency: createMetric('Consistency', typeof row.consistency !== 'undefined' ? row.consistency : 0)
     };
   } else if (role === 'Manager' || role === 'Owner') {
+    // For Manager and Owner, always set maximum scores
     metrics = {
       // Moderator metrics
-      responsiveness: createMetric('Responsiveness', row.responsiveness || 10),
-      fairness: createMetric('Fairness', row.fairness || 10),
-      communication: createMetric('Communication', row.communication || 10),
-      conflictResolution: createMetric('Conflict Resolution', row.conflict_resolution || 10),
-      ruleEnforcement: createMetric('Rule Enforcement', row.rule_enforcement || 10),
-      engagement: createMetric('Engagement', row.engagement || 10),
-      supportiveness: createMetric('Supportiveness', row.supportiveness || 10),
-      adaptability: createMetric('Adaptability', row.adaptability || 10),
-      objectivity: createMetric('Objectivity', row.objectivity || 10),
-      initiative: createMetric('Initiative', row.initiative || 10),
+      responsiveness: createMetric('Responsiveness', 10, role),
+      fairness: createMetric('Fairness', 10, role),
+      communication: createMetric('Communication', 10, role),
+      conflictResolution: createMetric('Conflict Resolution', 10, role),
+      ruleEnforcement: createMetric('Rule Enforcement', 10, role),
+      engagement: createMetric('Engagement', 10, role),
+      supportiveness: createMetric('Supportiveness', 10, role),
+      adaptability: createMetric('Adaptability', 10, role),
+      objectivity: createMetric('Objectivity', 10, role),
+      initiative: createMetric('Initiative', 10, role),
       // Builder metrics
-      exterior: createMetric('Exterior', row.exterior || 10),
-      interior: createMetric('Interior', row.interior || 10),
-      decoration: createMetric('Decoration', row.decoration || 10),
-      effort: createMetric('Effort', row.effort || 10),
-      contribution: createMetric('Contribution', row.contribution || 10),
-      cooperativeness: createMetric('Cooperativeness', row.cooperativeness || 10),
-      creativity: createMetric('Creativity', typeof row.creativity !== 'undefined' ? row.creativity : 10),
-      consistency: createMetric('Consistency', typeof row.consistency !== 'undefined' ? row.consistency : 10)
+      exterior: createMetric('Exterior', 10, role),
+      interior: createMetric('Interior', 10, role),
+      decoration: createMetric('Decoration', 10, role),
+      effort: createMetric('Effort', 10, role),
+      contribution: createMetric('Contribution', 10, role),
+      cooperativeness: createMetric('Cooperativeness', 10, role),
+      creativity: createMetric('Creativity', 10, role),
+      consistency: createMetric('Consistency', 10, role)
     };
   }
   
   // Calculate overall score
-  const metricEntries = Object.values(metrics);
-  // Use typed values with proper type guard
-  const scores = metricEntries.map(metric => {
-    const typedMetric = metric as PerformanceMetric;
-    return typeof typedMetric.score === 'number' ? typedMetric.score : 0;
-  });
+  let overallScore = 0;
+  let overallGrade: LetterGrade = 'B';
   
-  const overallScore = scores.length > 0 
-    ? parseFloat((scores.reduce((sum, score) => sum + score, 0) / scores.length).toFixed(1))
-    : 0;
+  if (role === 'Manager' || role === 'Owner') {
+    // Special case for Managers and Owners
+    overallScore = 10;
+    overallGrade = 'SSS+';
+  } else {
+    // Regular score calculation for other roles
+    const metricEntries = Object.values(metrics);
+    // Use typed values with proper type guard
+    const scores = metricEntries.map(metric => {
+      const typedMetric = metric as PerformanceMetric;
+      return typeof typedMetric.score === 'number' ? typedMetric.score : 0;
+    });
+    
+    overallScore = scores.length > 0 
+      ? parseFloat((scores.reduce((sum, score) => sum + score, 0) / scores.length).toFixed(1))
+      : 0;
+    
+    overallGrade = row.overall_grade || calculateLetterGrade(overallScore);
+  }
   
   return {
     id: row.id,
@@ -92,7 +115,7 @@ export const transformToStaffMember = (row: any, role: StaffRole): StaffMember =
     avatar: avatar,
     metrics: metrics,
     overallScore: overallScore,
-    overallGrade: row.overall_grade || calculateLetterGrade(overallScore)
+    overallGrade: overallGrade
   };
 };
 
@@ -122,7 +145,9 @@ export const transformToDatabase = (staff: StaffMember): any => {
   };
 
   // Set overall_grade
-  dbObject.overall_grade = staff.overallGrade;
+  dbObject.overall_grade = staff.role === 'Manager' || staff.role === 'Owner' 
+    ? 'SSS+' 
+    : staff.overallGrade;
 
   // Add metrics based on role
   if (staff.role === 'Moderator') {
@@ -159,28 +184,27 @@ export const transformToDatabase = (staff: StaffMember): any => {
       dbObject.staff_id = `BDZ-${Math.floor(100 + Math.random() * 900)}`;
     }
   } else if (staff.role === 'Manager' || staff.role === 'Owner') {
-    const metrics = staff.metrics as ManagerMetrics;
+    // For Managers and Owners, set all scores to 10
     // Moderator metrics
-    dbObject.responsiveness = metrics.responsiveness.score;
-    dbObject.fairness = metrics.fairness.score;
-    dbObject.communication = metrics.communication.score;
-    dbObject.conflict_resolution = metrics.conflictResolution.score;
-    dbObject.rule_enforcement = metrics.ruleEnforcement.score;
-    dbObject.engagement = metrics.engagement.score;
-    dbObject.supportiveness = metrics.supportiveness.score;
-    dbObject.adaptability = metrics.adaptability.score;
-    dbObject.objectivity = metrics.objectivity ? metrics.objectivity.score : 0;
-    dbObject.initiative = metrics.initiative ? metrics.initiative.score : 0;
+    dbObject.responsiveness = 10;
+    dbObject.fairness = 10;
+    dbObject.communication = 10;
+    dbObject.conflict_resolution = 10;
+    dbObject.rule_enforcement = 10;
+    dbObject.engagement = 10;
+    dbObject.supportiveness = 10;
+    dbObject.adaptability = 10;
+    dbObject.objectivity = 10;
+    dbObject.initiative = 10;
     // Builder metrics
-    dbObject.exterior = metrics.exterior.score;
-    dbObject.interior = metrics.interior.score;
-    dbObject.decoration = metrics.decoration.score;
-    dbObject.effort = metrics.effort.score;
-    dbObject.contribution = metrics.contribution.score;
-    dbObject.cooperativeness = metrics.cooperativeness.score;
-    // Only add these if they exist in the metrics
-    if (metrics.creativity) dbObject.creativity = metrics.creativity.score;
-    if (metrics.consistency) dbObject.consistency = metrics.consistency.score;
+    dbObject.exterior = 10;
+    dbObject.interior = 10;
+    dbObject.decoration = 10;
+    dbObject.effort = 10;
+    dbObject.contribution = 10;
+    dbObject.cooperativeness = 10;
+    dbObject.creativity = 10;
+    dbObject.consistency = 10;
     // Add staff_id if not present
     if (!dbObject.staff_id) {
       dbObject.staff_id = `BDZ-${Math.floor(100 + Math.random() * 900)}`;

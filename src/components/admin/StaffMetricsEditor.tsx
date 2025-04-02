@@ -32,6 +32,7 @@ const StaffMetricsEditor: React.FC<StaffMetricsEditorProps> = ({
   useEffect(() => {
     if (selectedStaff) {
       setRank(selectedStaff.rank || '');
+      setImageError(false); // Reset image error state when staff changes
     }
   }, [selectedStaff]);
   
@@ -67,9 +68,14 @@ const StaffMetricsEditor: React.FC<StaffMetricsEditorProps> = ({
       url.searchParams.set('t', Date.now().toString());
       return url.toString();
     } catch (e) {
-      return avatarUrl;
+      // For non-URL strings, just add a timestamp parameter
+      const separator = avatarUrl.includes('?') ? '&' : '?';
+      return `${avatarUrl}${separator}t=${Date.now()}`;
     }
   };
+  
+  // Check if the staff is a Manager or Owner
+  const isManagerOrOwner = selectedStaff.role === 'Manager' || selectedStaff.role === 'Owner';
   
   // Get rank options based on staff role
   const getRankOptions = () => {
@@ -113,7 +119,10 @@ const StaffMetricsEditor: React.FC<StaffMetricsEditorProps> = ({
                 src={getAvatarUrl(selectedStaff.avatar)} 
                 alt={selectedStaff.name}
                 className="w-full h-full object-cover"
-                onError={() => setImageError(true)}
+                onError={() => {
+                  console.error('Image failed to load:', selectedStaff.avatar);
+                  setImageError(true);
+                }}
               />
               <AvatarFallback className="bg-cyber-darkpurple text-cyber-cyan">
                 {getInitials(selectedStaff.name)}
@@ -148,7 +157,9 @@ const StaffMetricsEditor: React.FC<StaffMetricsEditorProps> = ({
             <div key={key} className="space-y-1">
               <div className="flex justify-between items-center">
                 <label htmlFor={`metric-${key}`} className="text-white">{metric.name}</label>
-                <span className={`letter-grade text-sm`}>{metric.letterGrade}</span>
+                <span className={`letter-grade text-sm`}>
+                  {isManagerOrOwner ? 'SSS+' : metric.letterGrade}
+                </span>
               </div>
               <div className="flex gap-4 items-center">
                 <input
@@ -157,11 +168,14 @@ const StaffMetricsEditor: React.FC<StaffMetricsEditorProps> = ({
                   min="0"
                   max="10"
                   step="0.1"
-                  value={metric.score}
-                  onChange={(e) => onScoreChange(key, parseFloat(e.target.value))}
+                  value={isManagerOrOwner ? 10 : metric.score}
+                  onChange={(e) => !isManagerOrOwner && onScoreChange(key, parseFloat(e.target.value))}
                   className="w-full cyber-range"
+                  disabled={isManagerOrOwner}
                 />
-                <span className="text-cyber-cyan font-mono w-10 text-right">{metric.score.toFixed(1)}</span>
+                <span className="text-cyber-cyan font-mono w-10 text-right">
+                  {isManagerOrOwner ? 'Immeasurable' : metric.score.toFixed(1)}
+                </span>
               </div>
             </div>
           ))}

@@ -6,6 +6,7 @@ import { StaffMember, StaffRole } from '@/types/staff';
 import { toast } from '@/hooks/use-toast';
 import LoadingState from '@/components/LoadingState';
 import { useNavigate } from 'react-router-dom';
+import { calculateLetterGrade } from '@/services/staff/staffGrading';
 
 // Import refactored components
 import StaffList from '@/components/admin/StaffList';
@@ -65,6 +66,13 @@ const AdminPage: React.FC = () => {
           ? a.role.localeCompare(b.role) 
           : b.role.localeCompare(a.role);
       } else {
+        // For manager/owner, always put them at top or bottom depending on sort direction
+        if (a.role === 'Manager' || a.role === 'Owner') {
+          return sortAsc ? 1 : -1;
+        }
+        if (b.role === 'Manager' || b.role === 'Owner') {
+          return sortAsc ? -1 : 1;
+        }
         return sortAsc 
           ? a.overallScore - b.overallScore 
           : b.overallScore - a.overallScore;
@@ -84,11 +92,18 @@ const AdminPage: React.FC = () => {
   };
   
   const handleStaffSelect = (staff: StaffMember) => {
+    console.log("Selected staff:", staff.name, staff.role, staff.avatar);
     setSelectedStaff(staff);
   };
   
   const handleScoreChange = (metricKey: string, newScore: number) => {
     if (!selectedStaff) return;
+    
+    // Skip score changes for Managers and Owners
+    if (selectedStaff.role === 'Manager' || selectedStaff.role === 'Owner') {
+      console.log("Managers/Owners have fixed scores - not changing");
+      return;
+    }
     
     // Create a safe score between 0 and 10
     const safeScore = Math.min(Math.max(0, newScore), 10);
@@ -101,7 +116,7 @@ const AdminPage: React.FC = () => {
         [metricKey]: {
           ...selectedStaff.metrics[metricKey as keyof typeof selectedStaff.metrics],
           score: safeScore,
-          letterGrade: calculateLetterGrade(safeScore)
+          letterGrade: calculateLetterGrade(safeScore, selectedStaff.role)
         }
       }
     };
@@ -113,15 +128,29 @@ const AdminPage: React.FC = () => {
   const saveChanges = () => {
     if (!selectedStaff) return;
     
-    // Calculate the new overall score
+    // Special handling for Managers and Owners
+    if (selectedStaff.role === 'Manager' || selectedStaff.role === 'Owner') {
+      const staffToSave = {
+        ...selectedStaff,
+        overallScore: 10,
+        overallGrade: 'SSS+'
+      };
+      
+      updateStaffMember(staffToSave);
+      toast({
+        title: "Changes Saved",
+        description: `${selectedStaff.name}'s information has been updated.`,
+      });
+      return;
+    }
+    
+    // Calculate the new overall score for other roles
     const metricValues = Object.values(selectedStaff.metrics);
     const totalScore = metricValues.reduce((sum, metric) => sum + metric.score, 0);
     const average = parseFloat((totalScore / metricValues.length).toFixed(1));
     
     // Determine the new overall grade
-    const overallGrade = selectedStaff.role === 'Manager' || selectedStaff.role === 'Owner'
-      ? 'SSS+' 
-      : calculateLetterGrade(average);
+    const overallGrade = calculateLetterGrade(average, selectedStaff.role);
     
     // Create the final staff object to save
     const staffToSave = {
@@ -138,6 +167,19 @@ const AdminPage: React.FC = () => {
   };
   
   const handleAddStaff = async (newStaffData: Omit<StaffMember, 'id'>) => {
+    console.log("Adding new staff member:", newStaffData.name, newStaffData.role);
+    
+    // Ensure avatar URL is set
+    if (!newStaffData.avatar || newStaffData.avatar === '') {
+      newStaffData.avatar = '/placeholder.svg';
+    }
+    
+    // Special handling for Managers and Owners
+    if (newStaffData.role === 'Manager' || newStaffData.role === 'Owner') {
+      newStaffData.overallScore = 10;
+      newStaffData.overallGrade = 'SSS+';
+    }
+    
     await addStaffMember(newStaffData);
     
     toast({
@@ -157,19 +199,6 @@ const AdminPage: React.FC = () => {
       title: "Staff Removed",
       description: `${selectedStaff.name} has been removed from the system.`,
     });
-  };
-  
-  const calculateLetterGrade = (score: number): 'S+' | 'S' | 'A+' | 'A' | 'B+' | 'B' | 'C' | 'D' | 'E' | 'E-' | 'SSS+' | 'Immeasurable' => {
-    if (score >= 9) return 'S+';
-    if (score >= 8) return 'S';
-    if (score >= 7.5) return 'A+';
-    if (score >= 7) return 'A';
-    if (score >= 6.5) return 'B+';
-    if (score >= 6) return 'B';
-    if (score >= 5) return 'C';
-    if (score >= 4) return 'D';
-    if (score >= 3) return 'E';
-    return 'E-';
   };
   
   if (loading) {

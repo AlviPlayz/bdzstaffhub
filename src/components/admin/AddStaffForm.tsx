@@ -5,7 +5,8 @@ import {
   Dialog, 
   DialogContent, 
   DialogHeader, 
-  DialogTitle 
+  DialogTitle,
+  DialogDescription
 } from "@/components/ui/dialog";
 import { uploadStaffImage } from '@/services/staff/staffImageService';
 import { toast } from '@/hooks/use-toast';
@@ -25,6 +26,7 @@ import {
 } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
 import { initializeStaffImageStorage } from '@/services/staff/staffImageService';
+import { createImmeasurableMetrics } from '@/services/staff/staffGrading';
 
 // Define props interface for the component
 interface AddStaffFormProps {
@@ -61,39 +63,73 @@ const AddStaffForm: React.FC<AddStaffFormProps> = ({ isOpen, onClose, onAddStaff
       form.setValue('rank', 'Trial Mod');
     } else if (currentRole === 'Builder') {
       form.setValue('rank', 'Trial Builder');
-    } else if (currentRole === 'Manager') {
+    } else if (currentRole === 'Manager' || currentRole === 'Owner') {
       form.setValue('rank', 'Manager');
     }
   }, [currentRole, form]);
   
   // Initialize storage bucket when component mounts
   useEffect(() => {
-    initializeStaffImageStorage();
+    initializeStaffImageStorage().catch(err => 
+      console.error('Failed to initialize staff image storage:', err)
+    );
   }, []);
   
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const file = e.target.files[0];
+      
+      // Check file size (5MB limit)
+      if (file.size > 5 * 1024 * 1024) {
+        toast({
+          title: "Error",
+          description: "Image file is too large. Maximum size is 5MB.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // Check file type
+      if (!file.type.startsWith('image/')) {
+        toast({
+          title: "Error",
+          description: "Selected file is not an image.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
       setAvatarFile(file);
       
       // Create a preview URL
       const objectUrl = URL.createObjectURL(file);
       setPreviewUrl(objectUrl);
+      
+      console.log("Image file selected:", file.name, file.type, file.size);
     }
   };
   
   const handleSubmit = async (values: StaffFormValues) => {
     setIsSubmitting(true);
+    console.log("Submitting form with values:", values);
     
     try {
       let avatarUrl = '/placeholder.svg';
       
+      // Generate a temporary ID for the image upload
+      const tempId = `temp-${Date.now()}`;
+      
       if (avatarFile) {
-        // Generate a temporary ID for the upload
-        const tempId = `temp-${Date.now()}`;
-        avatarUrl = await uploadStaffImage(avatarFile, tempId, values.role);
+        console.log("Uploading image for new staff member...");
         
-        if (!avatarUrl) {
+        // Try to upload the image first
+        const uploadedUrl = await uploadStaffImage(avatarFile, tempId, values.role);
+        
+        if (uploadedUrl) {
+          console.log("Image uploaded successfully:", uploadedUrl);
+          avatarUrl = uploadedUrl;
+        } else {
+          console.error("Image upload failed, using placeholder");
           toast({
             title: "Warning",
             description: "Failed to upload image. Using placeholder instead.",
@@ -101,15 +137,20 @@ const AddStaffForm: React.FC<AddStaffFormProps> = ({ isOpen, onClose, onAddStaff
           });
           avatarUrl = '/placeholder.svg';
         }
+      } else {
+        console.log("No image selected, using placeholder");
       }
       
-      const newStaffData: Omit<StaffMember, 'id'> = {
-        name: values.name,
-        role: values.role,
-        rank: values.rank,
-        avatar: avatarUrl,
-        // Initialize metrics based on role
-        metrics: {
+      // Prepare metrics based on role
+      let metrics;
+      
+      if (values.role === 'Manager' || values.role === 'Owner') {
+        // Use special immeasurable metrics for Managers and Owners
+        metrics = createImmeasurableMetrics(values.role);
+        console.log("Created immeasurable metrics for Manager/Owner");
+      } else if (values.role === 'Moderator') {
+        // Define moderator metrics
+        metrics = {
           responsiveness: { id: 'responsiveness', name: 'Responsiveness', score: 7, letterGrade: 'B' },
           fairness: { id: 'fairness', name: 'Fairness', score: 7, letterGrade: 'B' },
           communication: { id: 'communication', name: 'Communication', score: 7, letterGrade: 'B' },
@@ -120,19 +161,46 @@ const AddStaffForm: React.FC<AddStaffFormProps> = ({ isOpen, onClose, onAddStaff
           adaptability: { id: 'adaptability', name: 'Adaptability', score: 7, letterGrade: 'B' },
           objectivity: { id: 'objectivity', name: 'Objectivity', score: 7, letterGrade: 'B' },
           initiative: { id: 'initiative', name: 'Initiative', score: 7, letterGrade: 'B' },
+        };
+      } else if (values.role === 'Builder') {
+        // Define builder metrics
+        metrics = {
           exterior: { id: 'exterior', name: 'Exterior', score: 7, letterGrade: 'B' },
           interior: { id: 'interior', name: 'Interior', score: 7, letterGrade: 'B' },
           decoration: { id: 'decoration', name: 'Decoration', score: 7, letterGrade: 'B' },
           effort: { id: 'effort', name: 'Effort', score: 7, letterGrade: 'B' },
           contribution: { id: 'contribution', name: 'Contribution', score: 7, letterGrade: 'B' },
+          communication: { id: 'communication', name: 'Communication', score: 7, letterGrade: 'B' },
+          adaptability: { id: 'adaptability', name: 'Adaptability', score: 7, letterGrade: 'B' },
           cooperativeness: { id: 'cooperativeness', name: 'Cooperativeness', score: 7, letterGrade: 'B' },
           creativity: { id: 'creativity', name: 'Creativity', score: 7, letterGrade: 'B' },
           consistency: { id: 'consistency', name: 'Consistency', score: 7, letterGrade: 'B' },
-        },
-        overallScore: 7,
-        overallGrade: 'B',
+        };
+      }
+      
+      // Set overall score and grade
+      const overallScore = values.role === 'Manager' || values.role === 'Owner' ? 10 : 7;
+      const overallGrade = values.role === 'Manager' || values.role === 'Owner' ? 'SSS+' : 'B';
+      
+      // Create the new staff member object
+      const newStaffData: Omit<StaffMember, 'id'> = {
+        name: values.name,
+        role: values.role,
+        rank: values.rank,
+        avatar: avatarUrl,
+        metrics: metrics!,
+        overallScore,
+        overallGrade,
       };
       
+      console.log("Adding new staff member with data:", {
+        name: newStaffData.name,
+        role: newStaffData.role,
+        rank: newStaffData.rank,
+        avatar: newStaffData.avatar.substring(0, 50) + '...',
+      });
+      
+      // Submit the data
       await onAddStaff(newStaffData);
       
       // Reset form
@@ -160,7 +228,10 @@ const AddStaffForm: React.FC<AddStaffFormProps> = ({ isOpen, onClose, onAddStaff
   // Clean up preview URL when dialog closes
   React.useEffect(() => {
     if (!isOpen) {
-      setPreviewUrl(null);
+      setPreviewUrl(prev => {
+        if (prev) URL.revokeObjectURL(prev);
+        return null;
+      });
       setAvatarFile(null);
       form.reset({
         name: '',
@@ -177,6 +248,9 @@ const AddStaffForm: React.FC<AddStaffFormProps> = ({ isOpen, onClose, onAddStaff
           <DialogTitle className="text-center">
             <span className="font-digital text-xl cyber-text-glow text-cyber-cyan">ADD NEW STAFF</span>
           </DialogTitle>
+          <DialogDescription className="text-center text-cyber-cyan/70">
+            Upload an image and set the staff member's details
+          </DialogDescription>
         </DialogHeader>
         
         <Form {...form}>
@@ -222,6 +296,7 @@ const AddStaffForm: React.FC<AddStaffFormProps> = ({ isOpen, onClose, onAddStaff
                       <SelectItem value="Moderator">Moderator</SelectItem>
                       <SelectItem value="Builder">Builder</SelectItem>
                       <SelectItem value="Manager">Manager</SelectItem>
+                      <SelectItem value="Owner">Owner</SelectItem>
                     </SelectContent>
                   </Select>
                 </FormItem>
@@ -263,7 +338,7 @@ const AddStaffForm: React.FC<AddStaffFormProps> = ({ isOpen, onClose, onAddStaff
                         </>
                       )}
                       
-                      {currentRole === 'Manager' && (
+                      {(currentRole === 'Manager' || currentRole === 'Owner') && (
                         <SelectItem value="Manager">Manager</SelectItem>
                       )}
                     </SelectContent>
@@ -300,6 +375,10 @@ const AddStaffForm: React.FC<AddStaffFormProps> = ({ isOpen, onClose, onAddStaff
                       cursor-pointer
                     "
               />
+              
+              <p className="mt-1 text-xs text-cyber-cyan/70">
+                Max file size: 5MB. Supported formats: JPG, PNG, GIF.
+              </p>
             </div>
             
             <div className="flex justify-between">

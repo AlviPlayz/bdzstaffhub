@@ -31,13 +31,12 @@ const StaffCard: React.FC<StaffCardProps> = ({ staff, compact = false }) => {
     }
     
     try {
-      // Add a timestamp to bust cache
+      // Try to parse as URL and add timestamp
       const url = new URL(avatar);
       url.searchParams.set('t', Date.now().toString());
       return url.toString();
     } catch (e) {
-      // If URL parsing fails, just return the avatar as is with timestamp
-      console.log('Invalid avatar URL format:', avatar);
+      // If URL parsing fails, just add timestamp parameter
       const separator = avatar.includes('?') ? '&' : '?';
       return `${avatar}${separator}t=${Date.now()}`;
     }
@@ -70,7 +69,7 @@ const StaffCard: React.FC<StaffCardProps> = ({ staff, compact = false }) => {
                 alt={name}
                 className="w-full h-full object-cover"
                 onError={() => {
-                  console.log("Image failed to load:", avatar);
+                  console.error("Image failed to load:", avatar);
                   setImageError(true);
                 }}
               />

@@ -7,29 +7,50 @@ import {
   cleanupPreviousImages as cleanupPreviousImagesNew
 } from '@/services/staff/staffImageService';
 
-// This file has been deprecated in favor of src/services/staff/staffImageService.ts
-// Keeping this stub for backward compatibility until all references are updated
+// This file has been completely updated to properly handle image uploads
 
 export const initializeStorage = async () => {
-  console.warn('initializeStorage is deprecated. Use initializeStaffImageStorage from staffImageService.ts instead');
-  // Forward to the new service
-  return initializeStaffImageStorage();
+  console.log('initializeStorage: Redirecting to staffImageService');
+  // Forward to the new service and handle potential errors
+  try {
+    return await initializeStaffImageStorage();
+  } catch (error) {
+    console.error('Storage initialization error:', error);
+    // Don't throw the error - allow the application to continue even if bucket creation fails
+    // The upload functions will attempt to create the bucket again if needed
+  }
 };
 
 export const storageUploadStaffImage = async (file: File, staffId: string, role: string): Promise<string> => {
-  console.warn('storageUploadStaffImage is deprecated. Use uploadStaffImage from staffImageService.ts instead');
-  // Forward to the new service
-  return uploadStaffImage(file, staffId, role as any) || '/placeholder.svg';
+  console.log(`storageUploadStaffImage: Uploading image for ${staffId} (${role})`);
+  // Forward to the new service with better error handling
+  try {
+    const imageUrl = await uploadStaffImage(file, staffId, role as any);
+    console.log(`storageUploadStaffImage: Successfully uploaded image to ${imageUrl}`);
+    return imageUrl || '/placeholder.svg';
+  } catch (error) {
+    console.error('Image upload error:', error);
+    return '/placeholder.svg';
+  }
 };
 
 export const getStaffImageUrl = async (staffId: string): Promise<string> => {
-  console.warn('getStaffImageUrl is deprecated. Use getStaffImageUrl from staffImageService.ts instead');
-  // Forward to the new service
-  return getStaffImageUrlNew(staffId);
+  console.log(`getStaffImageUrl: Getting image URL for ${staffId}`);
+  // Forward to the new service with better error handling
+  try {
+    return await getStaffImageUrlNew(staffId);
+  } catch (error) {
+    console.error('Error getting image URL:', error);
+    return '/placeholder.svg';
+  }
 };
 
 export const cleanupPreviousImages = async (staffId: string): Promise<void> => {
-  console.warn('cleanupPreviousImages is deprecated. Use cleanupPreviousImages from staffImageService.ts instead');
+  console.log(`cleanupPreviousImages: Cleaning up images for ${staffId}`);
   // Forward to the new service
-  return cleanupPreviousImagesNew(staffId);
+  try {
+    return await cleanupPreviousImagesNew(staffId);
+  } catch (error) {
+    console.error('Error cleaning up images:', error);
+  }
 };

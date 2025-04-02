@@ -18,7 +18,9 @@ export const initializeStaffImageStorage = async (): Promise<void> => {
     }
     
     // Create staff_images bucket if it doesn't exist
-    if (!buckets.find(bucket => bucket.name === 'staff_images')) {
+    const bucketExists = buckets.find(bucket => bucket.name === 'staff_images');
+    
+    if (!bucketExists) {
       try {
         console.log('Creating staff_images bucket...');
         const { error: createError } = await supabase.storage.createBucket('staff_images', {
@@ -28,25 +30,20 @@ export const initializeStaffImageStorage = async (): Promise<void> => {
         
         if (createError) {
           console.error('Error creating staff_images bucket:', createError.message);
+          // Don't throw an error - we'll try direct uploads anyway
         } else {
           console.log('Created staff_images storage bucket successfully');
-          
-          // Set public policy for the bucket
-          const { error: policyError } = await supabase.storage.from('staff_images')
-            .createSignedUrl('dummy.txt', 60);
-            
-          if (policyError) {
-            console.log('Note: Policy setup might require manual configuration in Supabase dashboard');
-          }
         }
       } catch (bucketError) {
         console.error('Failed to create bucket:', bucketError);
+        // Continue execution - uploads will be attempted even if bucket creation fails
       }
     } else {
       console.log('staff_images bucket already exists');
     }
   } catch (error) {
     console.error('Error initializing staff image storage:', error);
+    // Don't throw error - allow application to continue
   }
 };
 
@@ -96,43 +93,68 @@ export const updateStaffAvatar = async (file: File, staffId: string, role: Staff
 export const uploadStaffImage = async (file: File, staffId: string, role: StaffRole): Promise<string | null> => {
   try {
     console.log(`uploadStaffImage: Uploading image for staff ${staffId} (${role})`);
-    await initializeStaffImageStorage();
+    
+    // Try to initialize storage - don't wait for it to complete
+    initializeStaffImageStorage().catch(err => console.error('Storage init error during upload:', err));
     
     // Create a unique file path with staff ID to ensure uniqueness
     const fileExt = file.name.split('.').pop();
-    const fileName = `staff-${staffId}-${Date.now()}.${fileExt}`;
+    const timestamp = Date.now();
+    const fileName = `staff-${staffId}-${timestamp}.${fileExt}`;
     const filePath = `${role.toLowerCase()}/${fileName}`;
     
     console.log(`Uploading to path: ${filePath}`);
     
-    // Upload the image
-    const { data, error } = await supabase.storage
-      .from('staff_images')
-      .upload(filePath, file, { 
-        upsert: true,
-        cacheControl: 'no-cache'
-      });
+    // Upload the image - retry mechanism
+    let uploadResult;
+    let retries = 0;
+    const maxRetries = 3;
     
-    if (error) {
-      console.error('Image upload failed:', error.message);
+    while (retries < maxRetries) {
+      try {
+        uploadResult = await supabase.storage
+          .from('staff_images')
+          .upload(filePath, file, { 
+            upsert: true,
+            cacheControl: 'no-cache'
+          });
+        
+        if (!uploadResult.error) break;
+        
+        retries++;
+        console.log(`Upload attempt ${retries} failed, retrying...`);
+        await new Promise(resolve => setTimeout(resolve, 500)); // Wait before retry
+      } catch (uploadError) {
+        console.error(`Upload attempt ${retries} error:`, uploadError);
+        retries++;
+        if (retries >= maxRetries) throw uploadError;
+        await new Promise(resolve => setTimeout(resolve, 500)); // Wait before retry
+      }
+    }
+    
+    if (uploadResult?.error) {
+      console.error('Image upload failed after retries:', uploadResult.error.message);
       return null;
     }
     
     console.log('Image upload successful, getting public URL');
     
-    // Get the public URL with cache-busting parameter
-    const timestamp = Date.now();
+    // Get the public URL
     const { data: publicUrlData } = supabase.storage
       .from('staff_images')
-      .getPublicUrl(`${filePath}?t=${timestamp}`);
+      .getPublicUrl(filePath);
     
     if (!publicUrlData || !publicUrlData.publicUrl) {
       console.error('Failed to get public URL');
       return null;
     }
     
-    console.log(`Generated public URL: ${publicUrlData.publicUrl}`);
-    return publicUrlData.publicUrl;
+    // Add a cache-busting parameter
+    const publicUrl = new URL(publicUrlData.publicUrl);
+    publicUrl.searchParams.set('t', timestamp.toString());
+    
+    console.log(`Generated public URL: ${publicUrl.toString()}`);
+    return publicUrl.toString();
   } catch (error) {
     console.error('Error uploading staff image:', error);
     return null;
@@ -147,6 +169,8 @@ export const uploadStaffImage = async (file: File, staffId: string, role: StaffR
  */
 export const getStaffImageUrl = async (staffId: string): Promise<string> => {
   try {
+    console.log(`getStaffImageUrl: Searching for images for staff ${staffId}`);
+    
     // Try to find the image by listing the files with the staff ID prefix
     const { data, error } = await supabase.storage
       .from('staff_images')
@@ -173,17 +197,25 @@ export const getStaffImageUrl = async (staffId: string): Promise<string> => {
       return '/placeholder.svg';
     }
     
+    // Extract the folder path if it exists
+    const filePath = latestFile.name;
+    
     // Get the public URL with a timestamp to prevent caching
     const timestamp = Date.now();
     const { data: publicUrlData } = supabase.storage
       .from('staff_images')
-      .getPublicUrl(`${latestFile.name}?t=${timestamp}`);
+      .getPublicUrl(filePath);
     
     if (!publicUrlData.publicUrl) {
       return '/placeholder.svg';
     }
     
-    return publicUrlData.publicUrl;
+    // Add cache-busting parameter
+    const publicUrl = new URL(publicUrlData.publicUrl);
+    publicUrl.searchParams.set('t', timestamp.toString());
+    
+    console.log(`Found image for staff ${staffId}: ${publicUrl.toString()}`);
+    return publicUrl.toString();
   } catch (error) {
     console.error('Error getting staff image:', error);
     return '/placeholder.svg';
@@ -197,6 +229,8 @@ export const getStaffImageUrl = async (staffId: string): Promise<string> => {
  */
 export const cleanupPreviousImages = async (staffId: string): Promise<void> => {
   try {
+    console.log(`cleanupPreviousImages: Looking for old images for staff ${staffId}`);
+    
     // List all files with the staff ID prefix
     const { data, error } = await supabase.storage
       .from('staff_images')

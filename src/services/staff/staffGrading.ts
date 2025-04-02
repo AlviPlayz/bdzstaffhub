@@ -42,7 +42,51 @@ export const calculateOverallScoreAndGrade = (staff: StaffMember): { overallScor
   });
   
   const average = validMetrics > 0 ? parseFloat((totalScore / validMetrics).toFixed(1)) : 0;
-  const overallGrade = calculateLetterGrade(average);
+  const overallGrade = calculateLetterGrade(average, staff.role);
 
   return { overallScore: average, overallGrade };
+};
+
+// Create a set of immeasurable metrics for Managers and Owners
+export const createImmeasurableMetrics = (role: StaffRole): Record<string, PerformanceMetric> => {
+  if (role !== 'Manager' && role !== 'Owner') {
+    return {}; // Only create for managers and owners
+  }
+  
+  // Define base metrics that all staff roles have
+  const baseMetrics: Record<string, PerformanceMetric> = {
+    communication: { id: 'communication', name: 'Communication', score: 10, letterGrade: 'SSS+' },
+    adaptability: { id: 'adaptability', name: 'Adaptability', score: 10, letterGrade: 'SSS+' },
+  };
+  
+  // Add moderator-specific metrics
+  const moderatorMetrics: Record<string, PerformanceMetric> = {
+    responsiveness: { id: 'responsiveness', name: 'Responsiveness', score: 10, letterGrade: 'SSS+' },
+    fairness: { id: 'fairness', name: 'Fairness', score: 10, letterGrade: 'SSS+' },
+    conflictResolution: { id: 'conflictResolution', name: 'Conflict Resolution', score: 10, letterGrade: 'SSS+' },
+    ruleEnforcement: { id: 'ruleEnforcement', name: 'Rule Enforcement', score: 10, letterGrade: 'SSS+' },
+    engagement: { id: 'engagement', name: 'Engagement', score: 10, letterGrade: 'SSS+' },
+    supportiveness: { id: 'supportiveness', name: 'Supportiveness', score: 10, letterGrade: 'SSS+' },
+    objectivity: { id: 'objectivity', name: 'Objectivity', score: 10, letterGrade: 'SSS+' },
+    initiative: { id: 'initiative', name: 'Initiative', score: 10, letterGrade: 'SSS+' },
+  };
+  
+  // Add builder-specific metrics
+  const builderMetrics: Record<string, PerformanceMetric> = {
+    exterior: { id: 'exterior', name: 'Exterior', score: 10, letterGrade: 'SSS+' },
+    interior: { id: 'interior', name: 'Interior', score: 10, letterGrade: 'SSS+' },
+    decoration: { id: 'decoration', name: 'Decoration', score: 10, letterGrade: 'SSS+' },
+    effort: { id: 'effort', name: 'Effort', score: 10, letterGrade: 'SSS+' },
+    contribution: { id: 'contribution', name: 'Contribution', score: 10, letterGrade: 'SSS+' },
+    cooperativeness: { id: 'cooperativeness', name: 'Cooperativeness', score: 10, letterGrade: 'SSS+' },
+    creativity: { id: 'creativity', name: 'Creativity', score: 10, letterGrade: 'SSS+' },
+    consistency: { id: 'consistency', name: 'Consistency', score: 10, letterGrade: 'SSS+' },
+  };
+  
+  // Combine all metrics for managers
+  return {
+    ...baseMetrics,
+    ...moderatorMetrics,
+    ...builderMetrics
+  };
 };

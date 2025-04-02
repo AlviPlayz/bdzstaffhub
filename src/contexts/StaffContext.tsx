@@ -1,7 +1,6 @@
-
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { StaffMember, StaffRole } from '@/types/staff';
-import * as supabaseService from '@/services/supabaseService';
+import * as staffService from '@/services/staff';
 import { toast } from '@/hooks/use-toast';
 import { initializeStorage } from '@/integrations/supabase/storage';
 
@@ -56,7 +55,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       setLoading(true);
       console.log("Fetching staff data from Supabase...");
       
-      const allStaff = await supabaseService.getAllStaff();
+      const allStaff = await staffService.getAllStaff();
       console.log("Retrieved staff data:", allStaff.length, "members");
       
       // Separate staff by role
@@ -112,9 +111,9 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // Set up real-time subscriptions
   useEffect(() => {
     console.log("Setting up real-time subscriptions...");
-    const unsubscribeModerators = supabaseService.subscribeToRealTimeUpdates('moderators', refreshStaffData);
-    const unsubscribeBuilders = supabaseService.subscribeToRealTimeUpdates('builders', refreshStaffData);
-    const unsubscribeManagers = supabaseService.subscribeToRealTimeUpdates('managers', refreshStaffData);
+    const unsubscribeModerators = staffService.subscribeToRealTimeUpdates('moderators', refreshStaffData);
+    const unsubscribeBuilders = staffService.subscribeToRealTimeUpdates('builders', refreshStaffData);
+    const unsubscribeManagers = staffService.subscribeToRealTimeUpdates('managers', refreshStaffData);
     
     // Clean up subscriptions when the component unmounts
     return () => {
@@ -128,7 +127,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // Update a staff member
   const updateStaffMember = useCallback(async (updatedMember: StaffMember) => {
     try {
-      const result = await supabaseService.updateStaffMember(updatedMember);
+      const result = await staffService.updateStaffMember(updatedMember);
       
       // Optimistic UI update for better user experience
       setStaffData(prev => {
@@ -172,7 +171,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const addStaffMember = useCallback(async (newMember: Omit<StaffMember, 'id'>) => {
     try {
       console.log("Adding new staff member:", newMember.name, newMember.role);
-      const result = await supabaseService.createStaffMember(newMember);
+      const result = await staffService.createStaffMember(newMember);
       
       if (result) {
         // Optimistic UI update
@@ -211,7 +210,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // Remove a staff member
   const removeStaffMember = useCallback(async (id: string, role: StaffRole) => {
     try {
-      const success = await supabaseService.deleteStaffMember(id, role);
+      const success = await staffService.deleteStaffMember(id, role);
       
       if (success) {
         // Optimistic UI update

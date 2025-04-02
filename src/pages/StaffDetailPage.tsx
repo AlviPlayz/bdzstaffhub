@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getStaffMemberById } from '@/services/supabaseService';
+import { getStaffMemberById } from '@/services/staff';
 import { StaffMember } from '@/types/staff';
 import StaffCard from '@/components/StaffCard';
 import PerformanceBar from '@/components/PerformanceBar';

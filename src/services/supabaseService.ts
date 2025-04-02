@@ -1,8 +1,7 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { StaffMember, StaffRole, LetterGrade, ModeratorMetrics, BuilderMetrics, ManagerMetrics, PerformanceMetric } from '@/types/staff';
 import { StaffTableName } from '@/types/database';
-import { uploadStaffImage as storageUploadStaffImage } from '@/integrations/supabase/storage';
+import { cleanupPreviousImages, uploadStaffImage as storageUploadStaffImage } from '@/integrations/supabase/storage';
 
 // Function to create a performance metric
 const createMetric = (name: string, score: number): PerformanceMetric => {
@@ -50,7 +49,6 @@ const transformToStaffMember = (row: any, role: StaffRole): StaffMember => {
       consistency: createMetric('Consistency', typeof row.consistency !== 'undefined' ? row.consistency : 0)
     };
   } else if (role === 'Manager' || role === 'Owner') {
-    // Manager has both moderator and builder metrics
     metrics = {
       // Moderator metrics
       responsiveness: createMetric('Responsiveness', row.responsiveness || 10),
@@ -179,6 +177,8 @@ const transformToDatabase = (staff: StaffMember): any => {
 // Function to fetch all staff members
 export const getAllStaff = async (): Promise<StaffMember[]> => {
   try {
+    console.log("getAllStaff: Fetching staff data from Supabase");
+    
     // Fetch moderators
     const { data: moderators, error: modError } = await supabase
       .from('moderators')
@@ -203,6 +203,8 @@ export const getAllStaff = async (): Promise<StaffMember[]> => {
     const modStaff = (moderators || []).map(row => transformToStaffMember(row, 'Moderator'));
     const buildStaff = (builders || []).map(row => transformToStaffMember(row, 'Builder'));
     const mgrStaff = (managers || []).map(row => transformToStaffMember(row, 'Manager'));
+    
+    console.log(`getAllStaff: Found ${modStaff.length} moderators, ${buildStaff.length} builders, ${mgrStaff.length} managers`);
 
     // Combine all staff
     return [...modStaff, ...buildStaff, ...mgrStaff];
@@ -261,11 +263,13 @@ export const addStaffMember = async (data: any) => {
 // Function to update an existing staff member
 export const updateStaffMember = async (staff: StaffMember) => {
   try {
+    console.log(`updateStaffMember: Updating staff member ${staff.id} (${staff.name})`);
     const dbData = transformToDatabase(staff);
     
     // Ensure avatar URL is correctly set
     if (staff.avatar && staff.avatar !== '/placeholder.svg') {
       dbData.profile_image_url = staff.avatar;
+      console.log("updateStaffMember: Avatar URL set to", staff.avatar);
     }
     
     if (staff.role === 'Moderator') {
@@ -288,7 +292,7 @@ export const updateStaffMember = async (staff: StaffMember) => {
       if (error) throw error;
     }
     
-    // Cleanup previous images for this staff member using the local function
+    // Cleanup previous images for this staff member
     await cleanupPreviousImages(staff.id);
     
     return staff; // Return the updated staff member
@@ -383,49 +387,19 @@ export const getStaffMemberById = async (staffId: string): Promise<StaffMember |
 // Function to handle staff image uploads and save permanent URLs
 export const uploadStaffImage = async (file: File, staffId: string, role: StaffRole): Promise<string | null> => {
   try {
-    // Create a unique file path for this staff member with timestamp for cache busting
-    const timestamp = new Date().getTime();
-    const filePath = `staff/${role.toLowerCase()}/${staffId}_${timestamp}`;
+    console.log(`uploadStaffImage: Uploading image for staff ${staffId} (${role})`);
     
-    // Upload the image
-    const { data, error } = await supabase.storage
-      .from('staff-avatars')
-      .upload(filePath, file, { 
-        upsert: true,
-        cacheControl: '3600'
-      });
+    // Upload the image using the storage service
+    const avatarUrl = await storageUploadStaffImage(file, staffId, role);
     
-    if (error) {
-      console.error('Image upload failed:', error.message);
+    if (!avatarUrl) {
+      console.error('uploadStaffImage: Failed to upload image');
       return null;
     }
     
-    // Get the public URL with a timestamp to prevent caching
-    const { data: publicUrlData } = supabase.storage
-      .from('staff-avatars')
-      .getPublicUrl(`${filePath}?t=${timestamp}`);
+    console.log("uploadStaffImage: Image uploaded successfully, URL:", avatarUrl);
     
-    const imageUrl = publicUrlData.publicUrl;
-    
-    // Update the staff member's profile image in the database
-    if (role === 'Moderator') {
-      await supabase
-        .from('moderators')
-        .update({ profile_image_url: imageUrl })
-        .eq('id', staffId);
-    } else if (role === 'Builder') {
-      await supabase
-        .from('builders')
-        .update({ profile_image_url: imageUrl })
-        .eq('id', staffId);
-    } else if (role === 'Manager' || role === 'Owner') {
-      await supabase
-        .from('managers')
-        .update({ profile_image_url: imageUrl })
-        .eq('id', staffId);
-    }
-    
-    return imageUrl;
+    return avatarUrl;
   } catch (error) {
     console.error('Error uploading staff image:', error);
     return null;
@@ -476,14 +450,18 @@ export const calculateOverallScoreAndGrade = (staff: StaffMember): { overallScor
 
 // Function to subscribe to real-time updates
 export const subscribeToRealTimeUpdates = (table: string, callback: () => void) => {
+  console.log(`subscribeToRealTimeUpdates: Setting up subscription for table ${table}`);
+  
   const channel = supabase
     .channel(`public:${table}`)
-    .on('postgres_changes', { event: '*', schema: 'public', table }, () => {
+    .on('postgres_changes', { event: '*', schema: 'public', table }, (payload) => {
+      console.log(`Real-time update received for ${table}:`, payload.eventType);
       callback();
     })
     .subscribe();
 
   return () => {
+    console.log(`Removing subscription for table ${table}`);
     supabase.removeChannel(channel);
   };
 };
@@ -491,6 +469,8 @@ export const subscribeToRealTimeUpdates = (table: string, callback: () => void) 
 // Function to create a new staff member
 export const createStaffMember = async (data: Omit<StaffMember, 'id'>) => {
   try {
+    console.log(`createStaffMember: Adding new ${data.role} - ${data.name}`);
+    
     const staffData = data as StaffMember;
     staffData.id = crypto.randomUUID(); // Temporary ID for transformation
     const dbData = transformToDatabase(staffData);
@@ -498,6 +478,9 @@ export const createStaffMember = async (data: Omit<StaffMember, 'id'>) => {
     // Ensure avatar URL is correctly set
     if (data.avatar && data.avatar !== '/placeholder.svg') {
       dbData.profile_image_url = data.avatar;
+      console.log("createStaffMember: Avatar URL set to", data.avatar);
+    } else {
+      console.log("createStaffMember: Using placeholder avatar");
     }
     
     let result;
@@ -524,7 +507,9 @@ export const createStaffMember = async (data: Omit<StaffMember, 'id'>) => {
         contribution: dbData.contribution,
         communication: dbData.communication,
         adaptability: dbData.adaptability,
-        cooperativeness: dbData.cooperativeness
+        cooperativeness: dbData.cooperativeness,
+        creativity: dbData.creativity,
+        consistency: dbData.consistency
       };
       
       const { data: newStaff, error } = await supabase
@@ -546,6 +531,8 @@ export const createStaffMember = async (data: Omit<StaffMember, 'id'>) => {
       throw new Error('Failed to create staff member');
     }
 
+    console.log("createStaffMember: Staff member created with ID", result.id);
+    
     // Transform the result back to a StaffMember before returning
     const transformedResult = transformToStaffMember(result, data.role);
     
@@ -652,7 +639,7 @@ export const getStaffImageUrl = async (staffId: string): Promise<string> => {
     const { data, error } = await supabase.storage
       .from('staff-avatars')
       .list('staff', {
-        limit: 1,
+        limit: 100,
         search: staffId
       });
     
@@ -676,44 +663,5 @@ export const getStaffImageUrl = async (staffId: string): Promise<string> => {
   } catch (error) {
     console.error('Error getting staff image:', error);
     return '/placeholder.svg';
-  }
-};
-
-/**
- * Delete all previous images for a staff member
- * This helps clean up storage when updating images
- * @param staffId ID of the staff member
- */
-// Using a different name to avoid conflict with the imported function
-const cleanupPreviousImages = async (staffId: string): Promise<void> => {
-  try {
-    // List all files with the staff ID prefix
-    const { data, error } = await supabase.storage
-      .from('staff-avatars')
-      .list('staff', {
-        search: staffId
-      });
-    
-    if (error || !data || data.length === 0) {
-      return;
-    }
-    
-    // Get paths of all files to delete (skipping the most recent one)
-    const filesToDelete = data
-      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-      .slice(1) // Skip the most recent file
-      .map(file => `staff/${file.name}`);
-    
-    if (filesToDelete.length > 0) {
-      const { error: deleteError } = await supabase.storage
-        .from('staff-avatars')
-        .remove(filesToDelete);
-      
-      if (deleteError) {
-        console.error('Error cleaning up previous images:', deleteError.message);
-      }
-    }
-  } catch (error) {
-    console.error('Error in cleanup of staff images:', error);
   }
 };

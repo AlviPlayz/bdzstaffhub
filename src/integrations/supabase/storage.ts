@@ -46,8 +46,10 @@ export const initializeStorage = async () => {
  * @param role Role of the staff member for organized storage
  * @returns Public URL of the uploaded image or null if failed
  */
-export const uploadStaffImage = async (file: File, staffId: string, role: string): Promise<string | null> => {
+export const uploadStaffImage = async (file: File, staffId: string, role: string): Promise<string> => {
   try {
+    await initializeStorage();
+    
     // Create a unique file path for this staff member with a timestamp to prevent caching
     const timestamp = new Date().getTime();
     const filePath = `staff/${role.toLowerCase()}/${staffId}_${timestamp}`;
@@ -62,7 +64,7 @@ export const uploadStaffImage = async (file: File, staffId: string, role: string
     
     if (error) {
       console.error('Image upload failed:', error.message);
-      return null;
+      return '/placeholder.svg';
     }
     
     // Get the public URL with no-cache parameter
@@ -73,7 +75,7 @@ export const uploadStaffImage = async (file: File, staffId: string, role: string
     return publicUrlData.publicUrl;
   } catch (error) {
     console.error('Error uploading staff image:', error);
-    return null;
+    return '/placeholder.svg';
   }
 };
 
@@ -89,7 +91,7 @@ export const getStaffImageUrl = async (staffId: string): Promise<string> => {
     const { data, error } = await supabase.storage
       .from('staff-avatars')
       .list('staff', {
-        limit: 1,
+        limit: 100,
         search: staffId
       });
     
@@ -121,7 +123,7 @@ export const getStaffImageUrl = async (staffId: string): Promise<string> => {
  * This helps clean up storage when updating images
  * @param staffId ID of the staff member
  */
-export const cleanupPreviousStaffImages = async (staffId: string): Promise<void> => {
+export const cleanupPreviousImages = async (staffId: string): Promise<void> => {
   try {
     // List all files with the staff ID prefix
     const { data, error } = await supabase.storage

@@ -7,7 +7,8 @@ import {
   DialogHeader, 
   DialogTitle 
 } from "@/components/ui/dialog";
-import { uploadStaffImage } from '@/services/supabaseService';
+import { uploadStaffImage } from '@/integrations/supabase/storage';
+import { toast } from '@/hooks/use-toast';
 
 // Define props interface for the component
 interface AddStaffFormProps {
@@ -21,10 +22,19 @@ const AddStaffForm: React.FC<AddStaffFormProps> = ({ isOpen, onClose, onAddStaff
   const [role, setRole] = useState<StaffRole>('Moderator');
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      setAvatarFile(e.target.files[0]);
+      const file = e.target.files[0];
+      setAvatarFile(file);
+      
+      // Create a preview URL
+      const objectUrl = URL.createObjectURL(file);
+      setPreviewUrl(objectUrl);
+      
+      // Clean up the preview URL when component unmounts
+      return () => URL.revokeObjectURL(objectUrl);
     }
   };
   
@@ -33,11 +43,19 @@ const AddStaffForm: React.FC<AddStaffFormProps> = ({ isOpen, onClose, onAddStaff
     setIsSubmitting(true);
     
     try {
-      let avatarUrl = '';
+      let avatarUrl = '/placeholder.svg';
       if (avatarFile) {
         // Generate a temporary ID for the upload
         const tempId = `temp-${Date.now()}`;
         avatarUrl = await uploadStaffImage(avatarFile, tempId, role);
+        
+        if (!avatarUrl || avatarUrl === '/placeholder.svg') {
+          toast({
+            title: "Warning",
+            description: "Failed to upload image. Using placeholder instead.",
+            variant: "destructive",
+          });
+        }
       }
       
       const newStaffData: Omit<StaffMember, 'id'> = {
@@ -70,14 +88,33 @@ const AddStaffForm: React.FC<AddStaffFormProps> = ({ isOpen, onClose, onAddStaff
       };
       
       await onAddStaff(newStaffData);
+      
+      // Reset form
+      setName('');
+      setRole('Moderator');
+      setAvatarFile(null);
+      setPreviewUrl(null);
+      
       onClose();
     } catch (error) {
       console.error("Error adding staff:", error);
-      // Handle error appropriately (e.g., display an error message)
+      toast({
+        title: "Error",
+        description: "Failed to add staff member. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setIsSubmitting(false);
     }
   };
+  
+  // Clean up preview URL when dialog closes
+  React.useEffect(() => {
+    if (!isOpen) {
+      setPreviewUrl(null);
+      setAvatarFile(null);
+    }
+  }, [isOpen]);
   
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -120,9 +157,20 @@ const AddStaffForm: React.FC<AddStaffFormProps> = ({ isOpen, onClose, onAddStaff
           </div>
           
           <div>
-            <label className="block text-sm font-cyber text-cyber-cyan">
+            <label className="block text-sm font-cyber text-cyber-cyan mb-2">
               Avatar Image
             </label>
+            
+            {previewUrl && (
+              <div className="mb-3 flex justify-center">
+                <img 
+                  src={previewUrl} 
+                  alt="Avatar preview" 
+                  className="w-24 h-24 object-cover rounded-full border-2 border-cyber-cyan"
+                />
+              </div>
+            )}
+            
             <input
               type="file"
               accept="image/*"

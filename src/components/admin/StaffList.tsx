@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { StaffMember, StaffRole, LetterGrade } from '@/types/staff';
-import { Avatar } from '@/components/ui/avatar';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 
 interface StaffListProps {
   filteredStaff: StaffMember[];
@@ -43,6 +43,15 @@ const StaffList: React.FC<StaffListProps> = ({
     }
   };
   
+  // Helper function to get initials for avatar fallback
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(part => part[0])
+      .join('')
+      .toUpperCase();
+  };
+  
   return (
     <div className="lg:col-span-1">
       <div className="cyber-panel h-[600px] overflow-y-auto">
@@ -58,11 +67,20 @@ const StaffList: React.FC<StaffListProps> = ({
                   : 'hover:bg-cyber-darkpurple'}`}
             >
               <div className="w-10 h-10 rounded-full overflow-hidden mr-3">
-                <img 
-                  src={staff.avatar} 
-                  alt={staff.name} 
-                  className="w-full h-full object-cover"
-                />
+                <Avatar className="w-full h-full">
+                  <AvatarImage 
+                    src={staff.avatar || '/placeholder.svg'} 
+                    alt={staff.name} 
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      // Fallback to placeholder if image fails to load
+                      (e.target as HTMLImageElement).src = '/placeholder.svg';
+                    }}
+                  />
+                  <AvatarFallback className="bg-cyber-darkpurple text-cyber-cyan">
+                    {getInitials(staff.name)}
+                  </AvatarFallback>
+                </Avatar>
               </div>
               <div className="flex-1">
                 <h3 className="text-white font-cyber">{staff.name}</h3>

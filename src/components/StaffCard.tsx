@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { StaffMember } from '@/types/staff';
 import { getGradeColorClass } from '@/utils/gradeUtils';
 import { ArrowUpRight } from 'lucide-react';
@@ -13,6 +13,7 @@ interface StaffCardProps {
 
 const StaffCard: React.FC<StaffCardProps> = ({ staff, compact = false }) => {
   const { name, role, avatar, overallScore, overallGrade } = staff;
+  const [imageError, setImageError] = useState(false);
   
   // Extract initials for avatar fallback
   const getInitials = (name: string) => {
@@ -23,6 +24,18 @@ const StaffCard: React.FC<StaffCardProps> = ({ staff, compact = false }) => {
       .toUpperCase();
   };
   
+  // Add cache-busting parameter to avatar URL if it's not the placeholder
+  const avatarUrl = React.useMemo(() => {
+    if (!avatar || avatar === '/placeholder.svg' || imageError) {
+      return '/placeholder.svg';
+    }
+    
+    // Add a timestamp to bust cache
+    const url = new URL(avatar);
+    url.searchParams.set('t', Date.now().toString());
+    return url.toString();
+  }, [avatar, imageError]);
+  
   return (
     <div className="cyber-panel rounded-lg transition-all duration-300 hover:scale-[1.02]">
       <div className="flex items-center gap-4">
@@ -30,12 +43,12 @@ const StaffCard: React.FC<StaffCardProps> = ({ staff, compact = false }) => {
           <div className="w-16 h-16 rounded-full overflow-hidden cyber-border">
             <Avatar className="w-full h-full">
               <AvatarImage 
-                src={avatar || '/placeholder.svg'} 
+                src={avatarUrl}
                 alt={name}
                 className="w-full h-full object-cover"
-                onError={(e) => {
-                  // Fallback to placeholder if image fails to load
-                  (e.target as HTMLImageElement).src = '/placeholder.svg';
+                onError={() => {
+                  console.log("Image failed to load:", avatar);
+                  setImageError(true);
                 }}
               />
               <AvatarFallback className="bg-cyber-darkpurple text-cyber-cyan">

@@ -88,6 +88,7 @@ export const transformToStaffMember = (row: any, role: StaffRole): StaffMember =
     id: row.id,
     name: row.name,
     role: role,
+    rank: row.rank || getDefaultRank(role),
     avatar: avatar,
     metrics: metrics,
     overallScore: overallScore,
@@ -95,12 +96,28 @@ export const transformToStaffMember = (row: any, role: StaffRole): StaffMember =
   };
 };
 
+// Helper function to get default rank based on role
+const getDefaultRank = (role: StaffRole): string => {
+  switch (role) {
+    case 'Moderator':
+      return 'Trial Mod';
+    case 'Builder':
+      return 'Trial Builder';
+    case 'Manager':
+      return 'Manager';
+    case 'Owner':
+      return 'Owner';
+    default:
+      return '';
+  }
+};
+
 // Helper function to transform StaffMember to database format
 export const transformToDatabase = (staff: StaffMember): any => {
   // Common fields
   const dbObject: any = {
     name: staff.name,
-    rank: 'Senior', // Default rank if not specified
+    rank: staff.rank || getDefaultRank(staff.role),
     profile_image_url: staff.avatar
   };
 

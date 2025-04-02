@@ -52,6 +52,24 @@ const StaffList: React.FC<StaffListProps> = ({
       .toUpperCase();
   };
   
+  // Add cache-busting parameter to avatar URL
+  const getAvatarUrl = (avatarUrl: string) => {
+    if (!avatarUrl || avatarUrl === '/placeholder.svg') {
+      return '/placeholder.svg';
+    }
+    
+    try {
+      // Add a timestamp to bust cache
+      const url = new URL(avatarUrl);
+      if (!url.searchParams.has('t')) {
+        url.searchParams.set('t', Date.now().toString());
+      }
+      return url.toString();
+    } catch (e) {
+      return avatarUrl;
+    }
+  };
+  
   return (
     <div className="lg:col-span-1">
       <div className="cyber-panel h-[600px] overflow-y-auto">
@@ -69,7 +87,7 @@ const StaffList: React.FC<StaffListProps> = ({
               <div className="w-10 h-10 rounded-full overflow-hidden mr-3">
                 <Avatar className="w-full h-full">
                   <AvatarImage 
-                    src={staff.avatar || '/placeholder.svg'} 
+                    src={getAvatarUrl(staff.avatar)} 
                     alt={staff.name} 
                     className="w-full h-full object-cover"
                     onError={(e) => {
@@ -85,7 +103,10 @@ const StaffList: React.FC<StaffListProps> = ({
               <div className="flex-1">
                 <h3 className="text-white font-cyber">{staff.name}</h3>
                 <div className="flex justify-between items-center">
-                  <p className="text-cyber-cyan text-sm">{getStaffRoleLabel(staff.role)}</p>
+                  <div>
+                    <p className="text-cyber-cyan text-sm">{getStaffRoleLabel(staff.role)}</p>
+                    {staff.rank && <p className="text-cyber-yellow text-xs">{staff.rank}</p>}
+                  </div>
                   <p className={`text-sm text-white ${getLetterGradeClassName(staff.overallGrade)}`}>{staff.overallGrade}</p>
                 </div>
               </div>

@@ -1,7 +1,14 @@
 
-import React from 'react';
-import { StaffMember, StaffRole, LetterGrade } from '@/types/staff';
-import { Trash2, X, Check } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { StaffMember, StaffRole } from '@/types/staff';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface StaffMetricsEditorProps {
   selectedStaff: StaffMember | null;
@@ -18,116 +25,169 @@ const StaffMetricsEditor: React.FC<StaffMetricsEditorProps> = ({
   onCancelEdit,
   onRemoveStaff
 }) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [rank, setRank] = useState<string>('');
+  const [imageError, setImageError] = useState(false);
   
-  const getStaffRoleLabel = (role: StaffRole): string => {
-    switch (role) {
-      case 'Moderator': return 'Moderator';
-      case 'Builder': return 'Builder';
-      case 'Manager': return 'Manager';
-      case 'Owner': return 'Owner';
-      default: return 'Unknown';
+  useEffect(() => {
+    if (selectedStaff) {
+      setRank(selectedStaff.rank || '');
     }
-  };
+  }, [selectedStaff]);
   
   if (!selectedStaff) {
     return (
-      <div className="lg:col-span-2">
-        <div className="cyber-panel h-[600px] flex items-center justify-center">
-          <div className="text-center">
-            <p className="text-cyber-cyan font-digital text-xl mb-2">No Staff Selected</p>
-            <p className="text-white/60 font-cyber">Select a staff member to edit their metrics</p>
-          </div>
+      <div className="col-span-2">
+        <div className="cyber-panel h-[600px] flex flex-col justify-center items-center">
+          <p className="text-white text-center mb-2">Select a staff member to view and edit their metrics</p>
+          <p className="text-cyber-cyan/50">No staff member selected</p>
         </div>
       </div>
     );
   }
   
+  // Helper function to get initials for avatar fallback
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(part => part[0])
+      .join('')
+      .toUpperCase();
+  };
+  
+  // Add cache-busting parameter to avatar URL
+  const getAvatarUrl = (avatarUrl: string) => {
+    if (!avatarUrl || avatarUrl === '/placeholder.svg' || imageError) {
+      return '/placeholder.svg';
+    }
+    
+    try {
+      // Add a timestamp to bust cache
+      const url = new URL(avatarUrl);
+      url.searchParams.set('t', Date.now().toString());
+      return url.toString();
+    } catch (e) {
+      return avatarUrl;
+    }
+  };
+  
+  // Get rank options based on staff role
+  const getRankOptions = () => {
+    const role = selectedStaff.role;
+    
+    if (role === 'Moderator') {
+      return (
+        <>
+          <SelectItem value="Sr. Mod">Sr. Mod</SelectItem>
+          <SelectItem value="Mod">Mod</SelectItem>
+          <SelectItem value="Jr. Mod">Jr. Mod</SelectItem>
+          <SelectItem value="Trial Mod">Trial Mod</SelectItem>
+        </>
+      );
+    } else if (role === 'Builder') {
+      return (
+        <>
+          <SelectItem value="Head Builder">Head Builder</SelectItem>
+          <SelectItem value="Builder">Builder</SelectItem>
+          <SelectItem value="Trial Builder">Trial Builder</SelectItem>
+        </>
+      );
+    } else {
+      return <SelectItem value="Manager">Manager</SelectItem>;
+    }
+  };
+  
+  // Handle rank change
+  const handleRankChange = (newRank: string) => {
+    setRank(newRank);
+    selectedStaff.rank = newRank;
+  };
+  
   return (
-    <div className="lg:col-span-2">
-      <div className="cyber-panel">
-        <div className="flex justify-between items-center mb-6">
-          <div className="flex items-center">
-            <div className="w-12 h-12 rounded-full overflow-hidden mr-4">
-              <img 
-                src={selectedStaff.avatar} 
-                alt={selectedStaff.name} 
+    <div className="col-span-2">
+      <div className="cyber-panel h-[600px] overflow-y-auto">
+        <div className="flex items-center gap-4 mb-6">
+          <div className="w-16 h-16 rounded-full overflow-hidden cyber-border">
+            <Avatar className="w-full h-full">
+              <AvatarImage 
+                src={getAvatarUrl(selectedStaff.avatar)} 
+                alt={selectedStaff.name}
                 className="w-full h-full object-cover"
+                onError={() => setImageError(true)}
               />
-            </div>
-            <div>
-              <h2 className="text-xl font-digital text-white">{selectedStaff.name}</h2>
-              <p className="text-cyber-cyan text-sm">{getStaffRoleLabel(selectedStaff.role)}</p>
-            </div>
+              <AvatarFallback className="bg-cyber-darkpurple text-cyber-cyan">
+                {getInitials(selectedStaff.name)}
+              </AvatarFallback>
+            </Avatar>
           </div>
-          
-          <div className="flex items-center gap-2">
-            <button 
-              onClick={onRemoveStaff}
-              className="p-2 text-white hover:text-red-500"
-              title="Remove Staff Member"
-            >
-              <Trash2 size={20} />
-            </button>
-            <button 
-              onClick={onCancelEdit}
-              className="p-2 text-white hover:text-cyber-cyan"
-              title="Cancel Editing"
-            >
-              <X size={20} />
-            </button>
-            <button 
-              onClick={saveChanges}
-              className="cyber-button text-sm py-1 px-3 rounded flex items-center gap-1"
-              title="Save Changes"
-            >
-              <Check size={16} />
-              Save Changes
-            </button>
+          <div>
+            <h2 className="text-2xl cyber-text-glow font-digital text-white">{selectedStaff.name}</h2>
+            <div className="flex items-center gap-2">
+              <span className="text-cyber-cyan">{selectedStaff.role}</span>
+              <div className="w-full max-w-xs">
+                <Select 
+                  value={rank}
+                  onValueChange={handleRankChange}
+                >
+                  <SelectTrigger className="bg-cyber-black border border-cyber-cyan/40 text-white h-7 text-xs py-0">
+                    <SelectValue placeholder="Select rank" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-cyber-black border border-cyber-cyan text-white">
+                    {getRankOptions()}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
           </div>
         </div>
         
-        {/* Performance Metrics */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-h-[500px] overflow-y-auto pr-2">
+        <div className="space-y-6 mb-6">
+          <h3 className="text-xl font-digital text-cyber-cyan border-b border-cyber-cyan/30 pb-2">Performance Metrics</h3>
+          
           {Object.entries(selectedStaff.metrics).map(([key, metric]) => (
-            <div key={key} className="space-y-2">
+            <div key={key} className="space-y-1">
               <div className="flex justify-between items-center">
-                <label className="text-sm font-cyber text-white">{metric.name}</label>
-                <div className="text-cyber-cyan text-sm font-digital flex items-center gap-2">
-                  <span className="text-white">Score: {metric.score.toFixed(1)}</span>
-                  <span className={`letter-grade ${selectedStaff.role === 'Manager' || selectedStaff.role === 'Owner' ? 'grade-sss' : ''}`}>
-                    {metric.letterGrade}
-                  </span>
-                </div>
+                <label htmlFor={`metric-${key}`} className="text-white">{metric.name}</label>
+                <span className={`letter-grade text-sm`}>{metric.letterGrade}</span>
               </div>
-              
-              {/* Only show sliders for non-manager/owner roles */}
-              {(selectedStaff.role !== 'Manager' && selectedStaff.role !== 'Owner') && (
+              <div className="flex gap-4 items-center">
                 <input
+                  id={`metric-${key}`}
                   type="range"
                   min="0"
                   max="10"
                   step="0.1"
                   value={metric.score}
                   onChange={(e) => onScoreChange(key, parseFloat(e.target.value))}
-                  className="w-full accent-cyber-cyan bg-cyber-darkpurple h-2 rounded-full appearance-none cursor-pointer"
+                  className="w-full cyber-range"
                 />
-              )}
+                <span className="text-cyber-cyan font-mono w-10 text-right">{metric.score.toFixed(1)}</span>
+              </div>
             </div>
           ))}
         </div>
         
-        {/* Overall Grade Display */}
-        <div className="mt-6 border-t border-cyber-cyan/30 pt-4 flex justify-between items-center">
-          <div className="text-lg font-digital text-white">
-            Overall Performance:
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="text-cyber-cyan font-digital">
-              Score: {selectedStaff.overallScore.toFixed(1)}
-            </div>
-            <div className={`letter-grade text-lg ${selectedStaff.role === 'Manager' || selectedStaff.role === 'Owner' ? 'grade-sss' : ''}`}>
-              {selectedStaff.overallGrade}
-            </div>
+        <div className="flex gap-4 justify-between">
+          <button 
+            onClick={onRemoveStaff}
+            className="cyber-button-danger"
+          >
+            Remove Staff
+          </button>
+          
+          <div className="flex gap-4">
+            <button 
+              onClick={onCancelEdit}
+              className="cyber-button-secondary"
+            >
+              Cancel
+            </button>
+            <button 
+              onClick={saveChanges}
+              className="cyber-button"
+            >
+              Save Changes
+            </button>
           </div>
         </div>
       </div>

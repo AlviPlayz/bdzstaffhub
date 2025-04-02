@@ -44,6 +44,7 @@ export interface StaffMember {
   id: string;
   name: string;
   role: StaffRole;
+  rank?: string;
   avatar: string;
   metrics: ModeratorMetrics | BuilderMetrics | ManagerMetrics | OwnerMetrics;
   overallScore: number;

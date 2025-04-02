@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { StaffMember } from '@/types/staff';
 import { getGradeColorClass } from '@/utils/gradeUtils';
 import { ArrowUpRight } from 'lucide-react';
@@ -12,7 +12,7 @@ interface StaffCardProps {
 }
 
 const StaffCard: React.FC<StaffCardProps> = ({ staff, compact = false }) => {
-  const { name, role, avatar, overallScore, overallGrade } = staff;
+  const { name, role, rank, avatar, overallScore, overallGrade } = staff;
   const [imageError, setImageError] = useState(false);
   
   // Extract initials for avatar fallback
@@ -32,7 +32,9 @@ const StaffCard: React.FC<StaffCardProps> = ({ staff, compact = false }) => {
     
     // Add a timestamp to bust cache
     const url = new URL(avatar);
-    url.searchParams.set('t', Date.now().toString());
+    if (!url.searchParams.has('t')) {
+      url.searchParams.set('t', Date.now().toString());
+    }
     return url.toString();
   }, [avatar, imageError]);
   
@@ -65,7 +67,10 @@ const StaffCard: React.FC<StaffCardProps> = ({ staff, compact = false }) => {
         <div className="flex-1">
           <h3 className="text-lg font-digital text-white">{name}</h3>
           <div className="flex justify-between items-center">
-            <p className="text-sm text-cyber-cyan">{role}</p>
+            <div>
+              <p className="text-sm text-cyber-cyan">{role}</p>
+              {rank && <p className="text-xs text-cyber-yellow">{rank}</p>}
+            </div>
             <p className="text-sm">
               Score: <span className="text-cyber-cyan font-bold">
                 {role === 'Manager' || role === 'Owner' ? 'Immeasurable' : overallScore.toFixed(1)}

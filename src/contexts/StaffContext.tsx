@@ -1,8 +1,8 @@
+
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { StaffMember, StaffRole } from '@/types/staff';
 import * as staffService from '@/services/staff';
 import { toast } from '@/hooks/use-toast';
-import { initializeStorage } from '@/integrations/supabase/storage';
 
 interface StaffContextType {
   moderators: StaffMember[];
@@ -46,7 +46,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // Initialize storage on component mount
   useEffect(() => {
-    initializeStorage().catch(console.error);
+    staffService.initializeStaffImageStorage().catch(console.error);
   }, []);
 
   // Function to fetch staff data from Supabase with caching
@@ -127,6 +127,17 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // Update a staff member
   const updateStaffMember = useCallback(async (updatedMember: StaffMember) => {
     try {
+      // Ensure the rank is properly set before updating
+      if (!updatedMember.rank) {
+        if (updatedMember.role === 'Moderator') {
+          updatedMember.rank = 'Trial Mod';
+        } else if (updatedMember.role === 'Builder') {
+          updatedMember.rank = 'Trial Builder';
+        } else {
+          updatedMember.rank = 'Manager';
+        }
+      }
+      
       const result = await staffService.updateStaffMember(updatedMember);
       
       // Optimistic UI update for better user experience
@@ -171,6 +182,18 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const addStaffMember = useCallback(async (newMember: Omit<StaffMember, 'id'>) => {
     try {
       console.log("Adding new staff member:", newMember.name, newMember.role);
+      
+      // Ensure rank is set
+      if (!newMember.rank) {
+        if (newMember.role === 'Moderator') {
+          newMember.rank = 'Trial Mod';
+        } else if (newMember.role === 'Builder') {
+          newMember.rank = 'Trial Builder';
+        } else {
+          newMember.rank = 'Manager';
+        }
+      }
+      
       const result = await staffService.createStaffMember(newMember);
       
       if (result) {

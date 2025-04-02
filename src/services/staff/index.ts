@@ -2,7 +2,7 @@
 import { getAllStaff } from './staffQueries';
 import { addStaffMember, updateStaffMember, removeStaffMember, createStaffMember, deleteStaffMember } from './staffMutations';
 import { getStaffMemberById, calculateOverallScoreAndGrade } from './staffUtils';
-import { uploadStaffImage, updateStaffAvatar, getStaffImageUrl } from './staffImageService';
+import { uploadStaffImage, updateStaffAvatar, getStaffImageUrl, initializeStaffImageStorage } from './staffImageService';
 import { subscribeToRealTimeUpdates } from './staffRealtimeService';
 import { calculateLetterGrade } from './staffGrading';
 
@@ -22,6 +22,7 @@ export {
   uploadStaffImage,
   updateStaffAvatar,
   getStaffImageUrl,
+  initializeStaffImageStorage,
   
   // Utilities
   calculateLetterGrade,

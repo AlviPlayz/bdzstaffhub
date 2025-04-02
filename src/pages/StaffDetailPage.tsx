@@ -15,6 +15,7 @@ const StaffDetailPage: React.FC = () => {
   const [staff, setStaff] = useState<StaffMember | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [imageError, setImageError] = useState(false);
 
   useEffect(() => {
     const fetchStaffDetails = async () => {
@@ -54,6 +55,20 @@ const StaffDetailPage: React.FC = () => {
       .map(part => part[0])
       .join('')
       .toUpperCase();
+  };
+
+  // Add cache-busting parameter to avatar URL if it's not the placeholder
+  const getAvatarUrl = (avatarUrl: string) => {
+    if (!avatarUrl || avatarUrl === '/placeholder.svg' || imageError) {
+      return '/placeholder.svg';
+    }
+    
+    // Add a timestamp to bust cache
+    const url = new URL(avatarUrl);
+    if (!url.searchParams.has('t')) {
+      url.searchParams.set('t', Date.now().toString());
+    }
+    return url.toString();
   };
 
   if (loading) {
@@ -99,9 +114,10 @@ const StaffDetailPage: React.FC = () => {
                 <div className="w-20 h-20 rounded-full overflow-hidden cyber-border">
                   <Avatar className="w-full h-full">
                     <AvatarImage 
-                      src={`${staff.avatar || '/placeholder.svg'}?t=${new Date().getTime()}`} 
+                      src={getAvatarUrl(staff.avatar)}
                       alt={staff.name} 
                       className="w-full h-full object-cover"
+                      onError={() => setImageError(true)}
                     />
                     <AvatarFallback className="bg-cyber-darkpurple text-cyber-cyan">
                       {getInitials(staff.name)}
@@ -111,7 +127,10 @@ const StaffDetailPage: React.FC = () => {
               </div>
               <div>
                 <h2 className="text-2xl font-digital text-white">{staff.name}</h2>
-                <p className="text-cyber-cyan">{staff.role}</p>
+                <div className="flex items-center gap-2">
+                  <p className="text-cyber-cyan">{staff.role}</p>
+                  {staff.rank && <span className="text-cyber-yellow text-sm">({staff.rank})</span>}
+                </div>
                 <div className="mt-2 flex items-center">
                   <span className="mr-2">Overall Grade:</span>
                   <span className={`letter-grade text-lg ${staff.role === 'Manager' || staff.role === 'Owner' ? 'grade-sss' : ''}`}>

@@ -261,7 +261,7 @@ const AddStaffForm: React.FC<AddStaffFormProps> = ({ isOpen, onClose, onAddStaff
         const tempId = crypto.randomUUID();
         
         // Upload the image to Supabase
-        const uploadedUrl = await uploadStaffImage(values.imageFile, tempId);
+        const uploadedUrl = await uploadStaffImage(values.imageFile, tempId, values.role as StaffRole);
         
         if (uploadedUrl) {
           avatarUrl = uploadedUrl;

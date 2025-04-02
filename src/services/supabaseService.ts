@@ -1,7 +1,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { StaffMember, StaffRole, LetterGrade, ModeratorMetrics, BuilderMetrics, ManagerMetrics, PerformanceMetric } from '@/types/staff';
 import { StaffTableName } from '@/types/database';
-import { cleanupPreviousStaffImages } from '@/integrations/supabase/storage';
+import { uploadStaffImage as storageUploadStaffImage } from '@/integrations/supabase/storage';
 
 // Function to create a performance metric
 const createMetric = (name: string, score: number): PerformanceMetric => {
@@ -605,7 +605,7 @@ export const deleteStaffMember = async (id: string, role: StaffRole) => {
 export const updateStaffAvatar = async (file: File, staffId: string, role: StaffRole): Promise<string | null> => {
   try {
     // Upload the image to storage and get the URL
-    const imageUrl = await uploadStaffImage(file, staffId, role);
+    const imageUrl = await storageUploadStaffImage(file, staffId, role);
     
     if (!imageUrl) {
       return null;

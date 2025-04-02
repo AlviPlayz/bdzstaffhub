@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { StaffMember, StaffRole, LetterGrade, ModeratorMetrics, BuilderMetrics, ManagerMetrics, PerformanceMetric } from '@/types/staff';
 import { StaffTableName } from '@/types/database';
@@ -287,8 +288,8 @@ export const updateStaffMember = async (staff: StaffMember) => {
       if (error) throw error;
     }
     
-    // Cleanup previous images for this staff member
-    await cleanupPreviousStaffImages(staff.id);
+    // Cleanup previous images for this staff member using the local function
+    await cleanupPreviousImages(staff.id);
     
     return staff; // Return the updated staff member
   } catch (error) {
@@ -605,7 +606,7 @@ export const deleteStaffMember = async (id: string, role: StaffRole) => {
 export const updateStaffAvatar = async (file: File, staffId: string, role: StaffRole): Promise<string | null> => {
   try {
     // Upload the image to storage and get the URL
-    const imageUrl = await storageUploadStaffImage(file, staffId, role);
+    const imageUrl = await uploadStaffImage(file, staffId, role);
     
     if (!imageUrl) {
       return null;
@@ -630,7 +631,7 @@ export const updateStaffAvatar = async (file: File, staffId: string, role: Staff
     }
     
     // Cleanup previous images to save storage
-    await cleanupPreviousStaffImages(staffId);
+    await cleanupPreviousImages(staffId);
     
     return imageUrl;
   } catch (error) {
@@ -683,7 +684,8 @@ export const getStaffImageUrl = async (staffId: string): Promise<string> => {
  * This helps clean up storage when updating images
  * @param staffId ID of the staff member
  */
-export const cleanupPreviousStaffImages = async (staffId: string): Promise<void> => {
+// Using a different name to avoid conflict with the imported function
+const cleanupPreviousImages = async (staffId: string): Promise<void> => {
   try {
     // List all files with the staff ID prefix
     const { data, error } = await supabase.storage

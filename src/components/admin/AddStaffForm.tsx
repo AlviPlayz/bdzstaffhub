@@ -1,20 +1,12 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { StaffRole, LetterGrade } from '@/types/staff';
-import { Camera, Upload } from 'lucide-react';
-import { toast } from '@/hooks/use-toast';
-import { calculateLetterGrade } from '@/utils/gradeUtils';
-import { supabase } from '@/integrations/supabase/client';
+import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from '@/components/ui/dialog';
+import { StaffRole, LetterGrade } from '@/types/staff';
+import { useStaff } from '@/contexts/StaffContext';
+import { uploadStaffImage } from '@/services/supabaseService';
+import { toast } from '@/hooks/use-toast';
+import { Button } from '@/components/ui/button';
 import {
   Form,
   FormControl,
@@ -24,666 +16,858 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
-} from '@/components/ui/sheet';
-import { Button } from '@/components/ui/button';
-import { uploadStaffImage } from '@/integrations/supabase/storage';
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
+import { Slider } from '@/components/ui/slider';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { X, Upload } from 'lucide-react';
+import { calculateLetterGrade } from '@/services/supabaseService';
 
-// Form schema for adding/editing staff
-const staffFormSchema = z.object({
-  name: z.string().min(2, { message: "Name must be at least 2 characters" }),
+// Define the form schema with Zod
+const formSchema = z.object({
+  name: z.string().min(2, { message: 'Name must be at least 2 characters' }),
   role: z.enum(['Moderator', 'Builder', 'Manager', 'Owner']),
-  rank: z.string().optional(),
-  description: z.string().optional(),
-  imageFile: z.instanceof(File).optional(),
+  // Define metrics based on role
+  responsiveness: z.number().min(0).max(10).optional(),
+  fairness: z.number().min(0).max(10).optional(),
+  communication: z.number().min(0).max(10).optional(),
+  conflictResolution: z.number().min(0).max(10).optional(),
+  ruleEnforcement: z.number().min(0).max(10).optional(),
+  engagement: z.number().min(0).max(10).optional(),
+  supportiveness: z.number().min(0).max(10).optional(),
+  adaptability: z.number().min(0).max(10).optional(),
+  objectivity: z.number().min(0).max(10).optional(),
+  initiative: z.number().min(0).max(10).optional(),
+  // Builder metrics
+  exterior: z.number().min(0).max(10).optional(),
+  interior: z.number().min(0).max(10).optional(),
+  decoration: z.number().min(0).max(10).optional(),
+  effort: z.number().min(0).max(10).optional(),
+  contribution: z.number().min(0).max(10).optional(),
+  cooperativeness: z.number().min(0).max(10).optional(),
+  creativity: z.number().min(0).max(10).optional(),
+  consistency: z.number().min(0).max(10).optional(),
 });
 
-type StaffFormValues = z.infer<typeof staffFormSchema>;
+type FormValues = z.infer<typeof formSchema>;
 
-// Type definitions for staff ranks
-type ModeratorRank = 'Sr.Mod' | 'Mod' | 'Jr.Mod' | 'Trial';
-type BuilderRank = 'HeadBuilder' | 'Builder' | 'Trial Builder';
-type ManagerRank = 'Manager';
-type OwnerRank = 'Owner';
-
-interface AddStaffFormProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onAddStaff: (staff: any) => Promise<void>;
-}
-
-const AddStaffForm: React.FC<AddStaffFormProps> = ({ isOpen, onClose, onAddStaff }) => {
+const AddStaffForm: React.FC = () => {
+  const { addStaffMember } = useStaff();
+  const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [isDragging, setIsDragging] = useState(false);
-  const [showEvaluationSheet, setShowEvaluationSheet] = useState(false);
-  const [staffMetrics, setStaffMetrics] = useState<Record<string, number>>({});
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [uploadingImage, setUploadingImage] = useState(false);
-  
-  const form = useForm<StaffFormValues>({
-    resolver: zodResolver(staffFormSchema),
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Initialize the form
+  const form = useForm<FormValues>({
+    resolver: zodResolver(formSchema),
     defaultValues: {
       name: '',
       role: 'Moderator',
-      rank: 'Trial',
-      description: '',
-    }
+      // Default values for metrics
+      responsiveness: 5,
+      fairness: 5,
+      communication: 5,
+      conflictResolution: 5,
+      ruleEnforcement: 5,
+      engagement: 5,
+      supportiveness: 5,
+      adaptability: 5,
+      objectivity: 5,
+      initiative: 5,
+      // Builder metrics
+      exterior: 5,
+      interior: 5,
+      decoration: 5,
+      effort: 5,
+      contribution: 5,
+      cooperativeness: 5,
+      creativity: 5,
+      consistency: 5,
+    },
   });
-  
-  const watchedRole = form.watch('role');
 
-  // Reset form when modal is closed
-  useEffect(() => {
-    if (!isOpen) {
-      form.reset();
-      setImagePreview(null);
-      setStaffMetrics({});
-    }
-  }, [isOpen, form]);
-  
-  const openFileDialog = () => {
-    if (fileInputRef.current) {
-      fileInputRef.current.click();
-    }
-  };
-  
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(true);
-  };
-  
-  const handleDragLeave = () => {
-    setIsDragging(false);
-  };
-  
-  const handleDrop = async (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-    
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      await handleImageFile(e.dataTransfer.files[0]);
-    }
-  };
-  
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Get the current role value to conditionally render form fields
+  const currentRole = form.watch('role');
+
+  // Handle image upload
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      await handleImageFile(e.target.files[0]);
-    }
-  };
-  
-  const handleImageFile = async (file: File) => {
-    // Check file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      toast({
-        title: "File too large",
-        description: "Image must be less than 5MB",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    // Check file type
-    if (!file.type.match('image/jpeg|image/png|image/webp')) {
-      toast({
-        title: "Invalid file type",
-        description: "Only JPG, PNG and WebP images are supported",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    // Create a preview
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      setImagePreview(e.target?.result as string);
-    };
-    reader.readAsDataURL(file);
-    
-    // Store the actual file object to be uploaded when the form is submitted
-    form.setValue('imageFile', file);
-  };
-  
-  const getAvailableRanks = () => {
-    switch (watchedRole) {
-      case 'Moderator':
-        return ['Sr.Mod', 'Mod', 'Jr.Mod', 'Trial'];
-      case 'Builder':
-        return ['HeadBuilder', 'Builder', 'Trial Builder'];
-      case 'Manager':
-        return ['Manager'];
-      case 'Owner':
-        return ['Owner'];
-      default:
-        return [];
-    }
-  };
-  
-  const handleMetricChange = (key: string, value: number) => {
-    setStaffMetrics(prev => ({
-      ...prev,
-      [key]: value
-    }));
-  };
-  
-  const getGroupedMetrics = () => {
-    if (watchedRole === 'Moderator') {
-      return {
-        'Moderation Skills': [
-          { key: 'responsiveness', name: 'Responsiveness' },
-          { key: 'fairness', name: 'Fairness' },
-          { key: 'communication', name: 'Communication' },
-          { key: 'conflictResolution', name: 'Conflict Resolution' },
-          { key: 'ruleEnforcement', name: 'Rule Enforcement' }
-        ],
-        'Team Qualities': [
-          { key: 'engagement', name: 'Engagement' },
-          { key: 'supportiveness', name: 'Supportiveness' },
-          { key: 'adaptability', name: 'Adaptability' },
-          { key: 'objectivity', name: 'Objectivity' },
-          { key: 'initiative', name: 'Initiative' }
-        ]
+      const file = e.target.files[0];
+      setImageFile(file);
+      
+      // Create a preview
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
       };
-    } else if (watchedRole === 'Builder') {
-      return {
-        'Building Skills': [
-          { key: 'exterior', name: 'Exterior' },
-          { key: 'interior', name: 'Interior' },
-          { key: 'decoration', name: 'Decoration' },
-          { key: 'creativity', name: 'Creativity' },
-          { key: 'consistency', name: 'Consistency' }
-        ],
-        'Team Qualities': [
-          { key: 'effort', name: 'Effort' },
-          { key: 'contribution', name: 'Contribution' },
-          { key: 'communication', name: 'Communication' },
-          { key: 'adaptability', name: 'Adaptability' },
-          { key: 'cooperativeness', name: 'Cooperativeness' }
-        ]
-      };
-    } else {
-      // Manager or Owner gets all metrics
-      return {
-        'Moderation Skills': [
-          { key: 'responsiveness', name: 'Responsiveness' },
-          { key: 'fairness', name: 'Fairness' },
-          { key: 'communication', name: 'Communication' },
-          { key: 'conflictResolution', name: 'Conflict Resolution' },
-          { key: 'ruleEnforcement', name: 'Rule Enforcement' }
-        ],
-        'Team Qualities': [
-          { key: 'engagement', name: 'Engagement' },
-          { key: 'supportiveness', name: 'Supportiveness' },
-          { key: 'adaptability', name: 'Adaptability' },
-          { key: 'objectivity', name: 'Objectivity' },
-          { key: 'initiative', name: 'Initiative' }
-        ],
-        'Building Skills': [
-          { key: 'exterior', name: 'Exterior' },
-          { key: 'interior', name: 'Interior' },
-          { key: 'decoration', name: 'Decoration' },
-          { key: 'creativity', name: 'Creativity' },
-          { key: 'consistency', name: 'Consistency' }
-        ],
-        'Builder Team Qualities': [
-          { key: 'effort', name: 'Effort' },
-          { key: 'contribution', name: 'Contribution' },
-          { key: 'cooperativeness', name: 'Cooperativeness' }
-        ]
-      };
+      reader.readAsDataURL(file);
     }
   };
-  
-  const calculateOverallScore = (): number => {
-    if (watchedRole === 'Manager' || watchedRole === 'Owner') {
-      return 10;
-    }
-    
-    const metrics = Object.values(staffMetrics);
-    if (metrics.length === 0) return 5; // Default score
-    
-    const total = metrics.reduce((sum, score) => sum + score, 0);
-    return parseFloat((total / metrics.length).toFixed(1));
+
+  // Clear the selected image
+  const clearImage = () => {
+    setImageFile(null);
+    setImagePreview(null);
   };
-  
-  const onSubmit = async (values: StaffFormValues) => {
+
+  // Handle form submission
+  const onSubmit = async (values: FormValues) => {
     try {
-      setUploadingImage(true); // Show loading state
-      
-      // If we have an image file, upload it first and get URL
-      let avatarUrl = '/placeholder.svg'; // Default placeholder
-      
-      if (values.imageFile) {
-        // Generate a temporary ID for the new staff member
-        const tempId = crypto.randomUUID();
-        
-        // Upload the image to Supabase
-        const uploadedUrl = await uploadStaffImage(values.imageFile, tempId, values.role as StaffRole);
-        
-        if (uploadedUrl) {
-          avatarUrl = uploadedUrl;
-        } else {
-          toast({
-            title: "Image upload issue",
-            description: "Could not upload image, using placeholder instead",
-            variant: "destructive"
-          });
-        }
-      }
+      setIsSubmitting(true);
       
       // Create metrics based on role
-      let metrics: any = {};
-      let overallGrade: LetterGrade = 'B+';
+      const metrics: any = {};
       
       if (values.role === 'Moderator') {
-        metrics = {
-          responsiveness: { id: 'responsiveness', name: 'Responsiveness', score: staffMetrics.responsiveness || 5, letterGrade: calculateLetterGrade(staffMetrics.responsiveness || 5) as LetterGrade },
-          fairness: { id: 'fairness', name: 'Fairness', score: staffMetrics.fairness || 5, letterGrade: calculateLetterGrade(staffMetrics.fairness || 5) as LetterGrade },
-          communication: { id: 'communication', name: 'Communication', score: staffMetrics.communication || 5, letterGrade: calculateLetterGrade(staffMetrics.communication || 5) as LetterGrade },
-          conflictResolution: { id: 'conflictResolution', name: 'Conflict Resolution', score: staffMetrics.conflictResolution || 5, letterGrade: calculateLetterGrade(staffMetrics.conflictResolution || 5) as LetterGrade },
-          ruleEnforcement: { id: 'ruleEnforcement', name: 'Rule Enforcement', score: staffMetrics.ruleEnforcement || 5, letterGrade: calculateLetterGrade(staffMetrics.ruleEnforcement || 5) as LetterGrade },
-          engagement: { id: 'engagement', name: 'Engagement', score: staffMetrics.engagement || 5, letterGrade: calculateLetterGrade(staffMetrics.engagement || 5) as LetterGrade },
-          supportiveness: { id: 'supportiveness', name: 'Supportiveness', score: staffMetrics.supportiveness || 5, letterGrade: calculateLetterGrade(staffMetrics.supportiveness || 5) as LetterGrade },
-          adaptability: { id: 'adaptability', name: 'Adaptability', score: staffMetrics.adaptability || 5, letterGrade: calculateLetterGrade(staffMetrics.adaptability || 5) as LetterGrade },
-          objectivity: { id: 'objectivity', name: 'Objectivity', score: staffMetrics.objectivity || 5, letterGrade: calculateLetterGrade(staffMetrics.objectivity || 5) as LetterGrade },
-          initiative: { id: 'initiative', name: 'Initiative', score: staffMetrics.initiative || 5, letterGrade: calculateLetterGrade(staffMetrics.initiative || 5) as LetterGrade }
-        };
+        metrics.responsiveness = { score: values.responsiveness || 5, letterGrade: calculateLetterGrade(values.responsiveness || 5) };
+        metrics.fairness = { score: values.fairness || 5, letterGrade: calculateLetterGrade(values.fairness || 5) };
+        metrics.communication = { score: values.communication || 5, letterGrade: calculateLetterGrade(values.communication || 5) };
+        metrics.conflictResolution = { score: values.conflictResolution || 5, letterGrade: calculateLetterGrade(values.conflictResolution || 5) };
+        metrics.ruleEnforcement = { score: values.ruleEnforcement || 5, letterGrade: calculateLetterGrade(values.ruleEnforcement || 5) };
+        metrics.engagement = { score: values.engagement || 5, letterGrade: calculateLetterGrade(values.engagement || 5) };
+        metrics.supportiveness = { score: values.supportiveness || 5, letterGrade: calculateLetterGrade(values.supportiveness || 5) };
+        metrics.adaptability = { score: values.adaptability || 5, letterGrade: calculateLetterGrade(values.adaptability || 5) };
+        metrics.objectivity = { score: values.objectivity || 5, letterGrade: calculateLetterGrade(values.objectivity || 5) };
+        metrics.initiative = { score: values.initiative || 5, letterGrade: calculateLetterGrade(values.initiative || 5) };
       } else if (values.role === 'Builder') {
-        metrics = {
-          exterior: { id: 'exterior', name: 'Exterior', score: staffMetrics.exterior || 5, letterGrade: calculateLetterGrade(staffMetrics.exterior || 5) as LetterGrade },
-          interior: { id: 'interior', name: 'Interior', score: staffMetrics.interior || 5, letterGrade: calculateLetterGrade(staffMetrics.interior || 5) as LetterGrade },
-          decoration: { id: 'decoration', name: 'Decoration', score: staffMetrics.decoration || 5, letterGrade: calculateLetterGrade(staffMetrics.decoration || 5) as LetterGrade },
-          effort: { id: 'effort', name: 'Effort', score: staffMetrics.effort || 5, letterGrade: calculateLetterGrade(staffMetrics.effort || 5) as LetterGrade },
-          contribution: { id: 'contribution', name: 'Contribution', score: staffMetrics.contribution || 5, letterGrade: calculateLetterGrade(staffMetrics.contribution || 5) as LetterGrade },
-          communication: { id: 'communication', name: 'Communication', score: staffMetrics.communication || 5, letterGrade: calculateLetterGrade(staffMetrics.communication || 5) as LetterGrade },
-          adaptability: { id: 'adaptability', name: 'Adaptability', score: staffMetrics.adaptability || 5, letterGrade: calculateLetterGrade(staffMetrics.adaptability || 5) as LetterGrade },
-          cooperativeness: { id: 'cooperativeness', name: 'Cooperativeness', score: staffMetrics.cooperativeness || 5, letterGrade: calculateLetterGrade(staffMetrics.cooperativeness || 5) as LetterGrade },
-          creativity: { id: 'creativity', name: 'Creativity', score: staffMetrics.creativity || 5, letterGrade: calculateLetterGrade(staffMetrics.creativity || 5) as LetterGrade },
-          consistency: { id: 'consistency', name: 'Consistency', score: staffMetrics.consistency || 5, letterGrade: calculateLetterGrade(staffMetrics.consistency || 5) as LetterGrade }
-        };
-      } else {
-        // Manager or Owner
-        overallGrade = 'SSS+' as LetterGrade;
-        metrics = {
-          // All metrics set to immeasurable
-          responsiveness: { id: 'responsiveness', name: 'Responsiveness', score: 10, letterGrade: 'Immeasurable' as LetterGrade },
-          fairness: { id: 'fairness', name: 'Fairness', score: 10, letterGrade: 'Immeasurable' as LetterGrade },
-          communication: { id: 'communication', name: 'Communication', score: 10, letterGrade: 'Immeasurable' as LetterGrade },
-          conflictResolution: { id: 'conflictResolution', name: 'Conflict Resolution', score: 10, letterGrade: 'Immeasurable' as LetterGrade },
-          ruleEnforcement: { id: 'ruleEnforcement', name: 'Rule Enforcement', score: 10, letterGrade: 'Immeasurable' as LetterGrade },
-          engagement: { id: 'engagement', name: 'Engagement', score: 10, letterGrade: 'Immeasurable' as LetterGrade },
-          supportiveness: { id: 'supportiveness', name: 'Supportiveness', score: 10, letterGrade: 'Immeasurable' as LetterGrade },
-          adaptability: { id: 'adaptability', name: 'Adaptability', score: 10, letterGrade: 'Immeasurable' as LetterGrade },
-          objectivity: { id: 'objectivity', name: 'Objectivity', score: 10, letterGrade: 'Immeasurable' as LetterGrade },
-          initiative: { id: 'initiative', name: 'Initiative', score: 10, letterGrade: 'Immeasurable' as LetterGrade },
-          // Builder metrics
-          exterior: { id: 'exterior', name: 'Exterior', score: 10, letterGrade: 'Immeasurable' as LetterGrade },
-          interior: { id: 'interior', name: 'Interior', score: 10, letterGrade: 'Immeasurable' as LetterGrade },
-          decoration: { id: 'decoration', name: 'Decoration', score: 10, letterGrade: 'Immeasurable' as LetterGrade },
-          effort: { id: 'effort', name: 'Effort', score: 10, letterGrade: 'Immeasurable' as LetterGrade },
-          contribution: { id: 'contribution', name: 'Contribution', score: 10, letterGrade: 'Immeasurable' as LetterGrade },
-          cooperativeness: { id: 'cooperativeness', name: 'Cooperativeness', score: 10, letterGrade: 'Immeasurable' as LetterGrade },
-          creativity: { id: 'creativity', name: 'Creativity', score: 10, letterGrade: 'Immeasurable' as LetterGrade },
-          consistency: { id: 'consistency', name: 'Consistency', score: 10, letterGrade: 'Immeasurable' as LetterGrade }
-        };
+        metrics.exterior = { score: values.exterior || 5, letterGrade: calculateLetterGrade(values.exterior || 5) };
+        metrics.interior = { score: values.interior || 5, letterGrade: calculateLetterGrade(values.interior || 5) };
+        metrics.decoration = { score: values.decoration || 5, letterGrade: calculateLetterGrade(values.decoration || 5) };
+        metrics.effort = { score: values.effort || 5, letterGrade: calculateLetterGrade(values.effort || 5) };
+        metrics.contribution = { score: values.contribution || 5, letterGrade: calculateLetterGrade(values.contribution || 5) };
+        metrics.communication = { score: values.communication || 5, letterGrade: calculateLetterGrade(values.communication || 5) };
+        metrics.adaptability = { score: values.adaptability || 5, letterGrade: calculateLetterGrade(values.adaptability || 5) };
+        metrics.cooperativeness = { score: values.cooperativeness || 5, letterGrade: calculateLetterGrade(values.cooperativeness || 5) };
+        metrics.creativity = { score: values.creativity || 5, letterGrade: calculateLetterGrade(values.creativity || 5) };
+        metrics.consistency = { score: values.consistency || 5, letterGrade: calculateLetterGrade(values.consistency || 5) };
+      } else if (values.role === 'Manager' || values.role === 'Owner') {
+        // For managers, we include all metrics with high default values
+        metrics.responsiveness = { score: 10, letterGrade: 'S+' };
+        metrics.fairness = { score: 10, letterGrade: 'S+' };
+        metrics.communication = { score: 10, letterGrade: 'S+' };
+        metrics.conflictResolution = { score: 10, letterGrade: 'S+' };
+        metrics.ruleEnforcement = { score: 10, letterGrade: 'S+' };
+        metrics.engagement = { score: 10, letterGrade: 'S+' };
+        metrics.supportiveness = { score: 10, letterGrade: 'S+' };
+        metrics.adaptability = { score: 10, letterGrade: 'S+' };
+        metrics.objectivity = { score: 10, letterGrade: 'S+' };
+        metrics.initiative = { score: 10, letterGrade: 'S+' };
+        metrics.exterior = { score: 10, letterGrade: 'S+' };
+        metrics.interior = { score: 10, letterGrade: 'S+' };
+        metrics.decoration = { score: 10, letterGrade: 'S+' };
+        metrics.effort = { score: 10, letterGrade: 'S+' };
+        metrics.contribution = { score: 10, letterGrade: 'S+' };
+        metrics.cooperativeness = { score: 10, letterGrade: 'S+' };
+        metrics.creativity = { score: 10, letterGrade: 'S+' };
+        metrics.consistency = { score: 10, letterGrade: 'S+' };
       }
       
-      // Create new staff object
-      const newStaff = {
+      // Calculate overall score and grade
+      const metricValues = Object.values(metrics).map((m: any) => m.score);
+      const overallScore = metricValues.reduce((sum: number, score: number) => sum + score, 0) / metricValues.length;
+      const overallGrade = values.role === 'Manager' || values.role === 'Owner' 
+        ? 'SSS+' as LetterGrade 
+        : calculateLetterGrade(overallScore);
+      
+      // Create the staff member object
+      const newStaffMember = {
         name: values.name,
         role: values.role as StaffRole,
-        rank: values.rank,
-        description: values.description || '',
-        avatar: avatarUrl,
         metrics,
-        overallScore: calculateOverallScore(),
-        overallGrade
+        overallScore,
+        overallGrade,
+        avatar: '/placeholder.svg', // Default avatar
       };
       
-      await onAddStaff(newStaff);
+      // If there's an image file, upload it first
+      if (imageFile) {
+        // Generate a temporary ID for the image upload
+        const tempId = `temp-${Date.now()}`;
+        // Upload the image and get the URL
+        const uploadedUrl = await uploadStaffImage(imageFile, tempId, values.role as StaffRole);
+        if (uploadedUrl) {
+          newStaffMember.avatar = uploadedUrl;
+        }
+      }
       
-      // Reset states after successful submission
+      // Add the staff member
+      await addStaffMember(newStaffMember);
+      
+      // Reset the form
       form.reset();
+      setImageFile(null);
       setImagePreview(null);
-      setStaffMetrics({});
-      onClose();
       
       toast({
-        title: "Staff Added",
-        description: `${values.name} has been added as a ${values.role}`,
+        title: "Staff Member Added",
+        description: `${values.name} has been added as a ${values.role}.`,
       });
     } catch (error) {
-      console.error('Error adding staff:', error);
+      console.error('Error adding staff member:', error);
       toast({
-        title: "Failed to add staff",
-        description: "An error occurred while saving staff information",
-        variant: "destructive"
+        title: "Error",
+        description: "Failed to add staff member. Please try again.",
+        variant: "destructive",
       });
     } finally {
-      setUploadingImage(false);
+      setIsSubmitting(false);
     }
   };
-  
-  const renderEvaluationSheet = () => {
-    return (
-      <Sheet open={showEvaluationSheet} onOpenChange={setShowEvaluationSheet}>
-        <SheetContent side="right" className="bg-cyber-darkblue border-l border-cyber-cyan w-full sm:max-w-md max-h-screen overflow-y-auto">
-          <SheetHeader>
-            <SheetTitle className="text-center font-digital text-xl text-cyber-cyan">
-              Staff Performance Metrics
-            </SheetTitle>
-            <SheetDescription className="text-center text-white/70">
-              Set scores from 0-10 for each performance category
-            </SheetDescription>
-          </SheetHeader>
+
+  return (
+    <div className="cyber-panel p-6">
+      <h2 className="text-xl font-digital mb-6 text-cyber-cyan">Add New Staff Member</h2>
+      
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          {/* Name Field */}
+          <FormField
+            control={form.control}
+            name="name"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Name</FormLabel>
+                <FormControl>
+                  <Input placeholder="Enter staff name" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
           
-          <div className="space-y-6 mt-6 overflow-y-auto pr-2">
-            {Object.entries(getGroupedMetrics()).map(([group, metrics]) => (
-              <div key={group} className="space-y-4">
-                <h3 className="text-lg font-digital text-white border-b border-cyber-cyan/30 pb-1">
-                  {group}
-                </h3>
-                
-                {metrics.map(({ key, name }) => (
-                  <div key={key} className="space-y-2">
-                    <div className="flex justify-between items-center">
-                      <label className="text-sm font-cyber text-white">{name}</label>
-                      <div className="text-cyber-cyan text-sm font-digital flex items-center gap-2">
-                        <span className="text-white">Score: {staffMetrics[key] || 0}</span>
-                        <span className={`letter-grade ${
-                          watchedRole === 'Manager' || watchedRole === 'Owner' 
-                            ? 'grade-sss' 
-                            : ''
-                        }`}>
-                          {(watchedRole === 'Manager' || watchedRole === 'Owner')
-                            ? 'Immeasurable'
-                            : calculateLetterGrade(staffMetrics[key] || 0)}
+          {/* Role Selection */}
+          <FormField
+            control={form.control}
+            name="role"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Role</FormLabel>
+                <Select 
+                  onValueChange={field.onChange} 
+                  defaultValue={field.value}
+                >
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a role" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="Moderator">Moderator</SelectItem>
+                    <SelectItem value="Builder">Builder</SelectItem>
+                    <SelectItem value="Manager">Manager</SelectItem>
+                    <SelectItem value="Owner">Owner</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          
+          {/* Image Upload */}
+          <div className="space-y-2">
+            <FormLabel>Profile Image</FormLabel>
+            <div className="flex items-center gap-4">
+              <div className="relative">
+                <Avatar className="w-20 h-20 border-2 border-cyber-cyan">
+                  <AvatarImage src={imagePreview || '/placeholder.svg'} />
+                  <AvatarFallback className="bg-cyber-darkpurple text-cyber-cyan">
+                    {form.watch('name')
+                      ? form.watch('name')
+                          .split(' ')
+                          .map(part => part[0])
+                          .join('')
+                          .toUpperCase()
+                      : 'NEW'}
+                  </AvatarFallback>
+                </Avatar>
+                {imagePreview && (
+                  <button
+                    type="button"
+                    onClick={clearImage}
+                    className="absolute -top-2 -right-2 bg-red-500 rounded-full p-1"
+                  >
+                    <X size={14} />
+                  </button>
+                )}
+              </div>
+              <div>
+                <label className="cyber-button py-2 px-4 cursor-pointer">
+                  <Upload size={16} className="mr-2" />
+                  Upload Image
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleImageChange}
+                  />
+                </label>
+                <p className="text-xs mt-1 text-gray-400">
+                  Recommended: 256x256px, max 5MB
+                </p>
+              </div>
+            </div>
+          </div>
+          
+          {/* Conditional Metrics based on Role */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-digital text-cyber-cyan">Performance Metrics</h3>
+            
+            {/* Moderator Metrics */}
+            {currentRole === 'Moderator' && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Responsiveness */}
+                <FormField
+                  control={form.control}
+                  name="responsiveness"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Responsiveness</FormLabel>
+                      <div className="flex items-center gap-4">
+                        <FormControl>
+                          <Slider
+                            min={0}
+                            max={10}
+                            step={0.5}
+                            value={[field.value || 5]}
+                            onValueChange={(value) => field.onChange(value[0])}
+                          />
+                        </FormControl>
+                        <span className="w-10 text-center font-mono">
+                          {field.value || 5}
                         </span>
                       </div>
-                    </div>
-                    
-                    {/* Only show editable sliders for non-manager/owner roles */}
-                    {(watchedRole !== 'Manager' && watchedRole !== 'Owner') && (
-                      <input
-                        type="range"
-                        min="0"
-                        max="10"
-                        step="0.1"
-                        value={staffMetrics[key] || 0}
-                        onChange={(e) => handleMetricChange(key, parseFloat(e.target.value))}
-                        className="w-full accent-cyber-cyan bg-cyber-darkpurple h-2 rounded-full appearance-none cursor-pointer"
-                      />
-                    )}
-                  </div>
-                ))}
-              </div>
-            ))}
-          </div>
-          
-          <div className="mt-8 pt-4 border-t border-cyber-cyan/30 sticky bottom-0 bg-cyber-darkblue pb-2">
-            <Button
-              type="button"
-              onClick={() => setShowEvaluationSheet(false)}
-              className="w-full cyber-button"
-            >
-              Save & Close
-            </Button>
-          </div>
-        </SheetContent>
-      </Sheet>
-    );
-  };
-  
-  return (
-    <>
-      <Dialog open={isOpen} onOpenChange={(open) => {
-        if (!open) {
-          // Reset form on close
-          form.reset();
-          setImagePreview(null);
-          setStaffMetrics({});
-        }
-        onClose();
-      }}>
-        <DialogContent className="bg-cyber-darkblue border border-cyber-cyan shadow-[0_0_15px_rgba(0,255,255,0.5)] max-w-lg max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-center">
-              <span className="font-digital text-xl cyber-text-glow text-cyber-cyan">ADD NEW STAFF MEMBER</span>
-            </DialogTitle>
-            <DialogDescription className="text-center text-white/70 font-cyber text-sm">
-              Enter details for the new staff member
-            </DialogDescription>
-          </DialogHeader>
-          
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              {/* Profile Image Upload */}
-              <div className="flex flex-col items-center mb-6">
-                <div
-                  className={`relative w-32 h-32 rounded-full overflow-hidden border-2 ${
-                    isDragging ? 'border-cyber-cyan border-dashed bg-cyber-darkpurple/50' : 'border-cyber-cyan/30'
-                  } cursor-pointer transition-all duration-200 mb-2 hover:border-cyber-cyan`}
-                  onClick={openFileDialog}
-                  onDragOver={handleDragOver}
-                  onDragLeave={handleDragLeave}
-                  onDrop={handleDrop}
-                >
-                  {imagePreview ? (
-                    <>
-                      <img 
-                        src={imagePreview} 
-                        alt="Preview" 
-                        className="w-full h-full object-cover" 
-                      />
-                      <div className="absolute inset-0 bg-black/20 opacity-0 hover:opacity-100 flex items-center justify-center transition-opacity">
-                        <Upload size={24} className="text-white" />
-                      </div>
-                    </>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center h-full text-white/60 p-2">
-                      <Camera size={28} className="mb-1 text-cyber-cyan/60" />
-                      <span className="text-xs text-center">
-                        {isDragging ? 'Drop image here' : 'Click or drag image here'}
-                      </span>
-                    </div>
+                      <FormMessage />
+                    </FormItem>
                   )}
-                  
-                  {uploadingImage && (
-                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                      <div className="h-8 w-8 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
-                    </div>
-                  )}
-                </div>
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  className="hidden"
-                  accept="image/jpeg, image/png, image/webp"
-                  onChange={handleFileSelect}
                 />
-                <div className="text-xs text-white/50 flex flex-col items-center">
-                  <span>JPG, PNG or WebP (max. 5MB)</span>
-                  <Button 
-                    type="button" 
-                    variant="ghost" 
-                    size="sm" 
-                    onClick={openFileDialog}
-                    className="text-cyber-cyan hover:text-cyber-cyan/80 p-0 h-auto mt-1"
-                  >
-                    Browse files
-                  </Button>
-                </div>
-              </div>
-              
-              {/* Name Field */}
-              <FormField
-                control={form.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem className="space-y-2">
-                    <FormLabel className="text-sm font-cyber text-cyber-cyan">
-                      Staff Name
-                    </FormLabel>
-                    <FormControl>
-                      <input 
-                        {...field}
-                        className="w-full bg-cyber-black border border-cyber-cyan rounded px-4 py-2 text-white font-cyber focus:outline-none focus:ring-2 focus:ring-cyber-cyan" 
-                        placeholder="Enter staff name" 
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              {/* Role Field */}
-              <FormField
-                control={form.control}
-                name="role"
-                render={({ field }) => (
-                  <FormItem className="space-y-2">
-                    <FormLabel className="text-sm font-cyber text-cyber-cyan">
-                      Staff Role
-                    </FormLabel>
-                    <FormControl>
-                      <select
-                        {...field}
-                        className="w-full bg-cyber-black border border-cyber-cyan rounded px-3 py-2 text-white font-cyber focus:outline-none focus:ring-2 focus:ring-cyber-cyan"
-                      >
-                        <option value="Moderator">Moderator</option>
-                        <option value="Builder">Builder</option>
-                        <option value="Manager">Manager</option>
-                        <option value="Owner">Owner</option>
-                      </select>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              {/* Rank Field */}
-              <FormField
-                control={form.control}
-                name="rank"
-                render={({ field }) => (
-                  <FormItem className="space-y-2">
-                    <FormLabel className="text-sm font-cyber text-cyber-cyan">
-                      Staff Rank
-                    </FormLabel>
-                    <FormControl>
-                      <select
-                        {...field}
-                        className="w-full bg-cyber-black border border-cyber-cyan rounded px-3 py-2 text-white font-cyber focus:outline-none focus:ring-2 focus:ring-cyber-cyan"
-                      >
-                        {getAvailableRanks().map(rank => (
-                          <option key={rank} value={rank}>{rank}</option>
-                        ))}
-                      </select>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              {/* Description Field (Optional) */}
-              <FormField
-                control={form.control}
-                name="description"
-                render={({ field }) => (
-                  <FormItem className="space-y-2">
-                    <FormLabel className="text-sm font-cyber text-cyber-cyan">
-                      Description (Optional)
-                    </FormLabel>
-                    <FormControl>
-                      <textarea
-                        {...field}
-                        className="w-full bg-cyber-black border border-cyber-cyan rounded px-4 py-2 text-white font-cyber focus:outline-none focus:ring-2 focus:ring-cyber-cyan h-20 resize-none"
-                        placeholder="Add notes about this staff member..."
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              {/* Evaluation Metrics */}
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-white font-cyber">Performance Evaluation</h3>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    onClick={() => setShowEvaluationSheet(true)}
-                    className="text-sm text-cyber-cyan hover:text-cyber-cyan/80 hover:bg-transparent p-0 h-auto"
-                  >
-                    Set Scores <span className="text-xs">(0-10)</span>
-                  </Button>
-                </div>
                 
-                <div className="bg-cyber-black/50 p-3 rounded border border-cyber-cyan/30">
-                  <div className="flex justify-between items-center">
-                    <span className="text-white font-cyber">Overall Score:</span>
-                    <span className="text-lg font-digital text-cyber-cyan">
-                      {calculateOverallScore().toFixed(1)}
-                    </span>
-                  </div>
-                  
-                  <div className="flex justify-between items-center mt-1">
-                    <span className="text-white font-cyber">Overall Grade:</span>
-                    <span className={`text-lg font-digital ${watchedRole === 'Manager' || watchedRole === 'Owner' ? 'text-fuchsia-400' : 'text-amber-400'}`}>
-                      {watchedRole === 'Manager' || watchedRole === 'Owner' 
-                        ? 'SSS+' 
-                        : calculateLetterGrade(calculateOverallScore())}
-                    </span>
-                  </div>
-                  
-                  <div className="mt-2 text-xs text-white/60 italic">
-                    {watchedRole === 'Manager' || watchedRole === 'Owner'
-                      ? "Managers and Owners receive Immeasurable scores by default."
-                      : "Click 'Set Scores' to adjust performance metrics."}
-                  </div>
-                </div>
+                {/* Fairness */}
+                <FormField
+                  control={form.control}
+                  name="fairness"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Fairness</FormLabel>
+                      <div className="flex items-center gap-4">
+                        <FormControl>
+                          <Slider
+                            min={0}
+                            max={10}
+                            step={0.5}
+                            value={[field.value || 5]}
+                            onValueChange={(value) => field.onChange(value[0])}
+                          />
+                        </FormControl>
+                        <span className="w-10 text-center font-mono">
+                          {field.value || 5}
+                        </span>
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                {/* Communication */}
+                <FormField
+                  control={form.control}
+                  name="communication"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Communication</FormLabel>
+                      <div className="flex items-center gap-4">
+                        <FormControl>
+                          <Slider
+                            min={0}
+                            max={10}
+                            step={0.5}
+                            value={[field.value || 5]}
+                            onValueChange={(value) => field.onChange(value[0])}
+                          />
+                        </FormControl>
+                        <span className="w-10 text-center font-mono">
+                          {field.value || 5}
+                        </span>
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                {/* Conflict Resolution */}
+                <FormField
+                  control={form.control}
+                  name="conflictResolution"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Conflict Resolution</FormLabel>
+                      <div className="flex items-center gap-4">
+                        <FormControl>
+                          <Slider
+                            min={0}
+                            max={10}
+                            step={0.5}
+                            value={[field.value || 5]}
+                            onValueChange={(value) => field.onChange(value[0])}
+                          />
+                        </FormControl>
+                        <span className="w-10 text-center font-mono">
+                          {field.value || 5}
+                        </span>
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                {/* Rule Enforcement */}
+                <FormField
+                  control={form.control}
+                  name="ruleEnforcement"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Rule Enforcement</FormLabel>
+                      <div className="flex items-center gap-4">
+                        <FormControl>
+                          <Slider
+                            min={0}
+                            max={10}
+                            step={0.5}
+                            value={[field.value || 5]}
+                            onValueChange={(value) => field.onChange(value[0])}
+                          />
+                        </FormControl>
+                        <span className="w-10 text-center font-mono">
+                          {field.value || 5}
+                        </span>
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                {/* Engagement */}
+                <FormField
+                  control={form.control}
+                  name="engagement"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Engagement</FormLabel>
+                      <div className="flex items-center gap-4">
+                        <FormControl>
+                          <Slider
+                            min={0}
+                            max={10}
+                            step={0.5}
+                            value={[field.value || 5]}
+                            onValueChange={(value) => field.onChange(value[0])}
+                          />
+                        </FormControl>
+                        <span className="w-10 text-center font-mono">
+                          {field.value || 5}
+                        </span>
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                {/* Supportiveness */}
+                <FormField
+                  control={form.control}
+                  name="supportiveness"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Supportiveness</FormLabel>
+                      <div className="flex items-center gap-4">
+                        <FormControl>
+                          <Slider
+                            min={0}
+                            max={10}
+                            step={0.5}
+                            value={[field.value || 5]}
+                            onValueChange={(value) => field.onChange(value[0])}
+                          />
+                        </FormControl>
+                        <span className="w-10 text-center font-mono">
+                          {field.value || 5}
+                        </span>
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                {/* Adaptability */}
+                <FormField
+                  control={form.control}
+                  name="adaptability"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Adaptability</FormLabel>
+                      <div className="flex items-center gap-4">
+                        <FormControl>
+                          <Slider
+                            min={0}
+                            max={10}
+                            step={0.5}
+                            value={[field.value || 5]}
+                            onValueChange={(value) => field.onChange(value[0])}
+                          />
+                        </FormControl>
+                        <span className="w-10 text-center font-mono">
+                          {field.value || 5}
+                        </span>
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                {/* Objectivity */}
+                <FormField
+                  control={form.control}
+                  name="objectivity"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Objectivity</FormLabel>
+                      <div className="flex items-center gap-4">
+                        <FormControl>
+                          <Slider
+                            min={0}
+                            max={10}
+                            step={0.5}
+                            value={[field.value || 5]}
+                            onValueChange={(value) => field.onChange(value[0])}
+                          />
+                        </FormControl>
+                        <span className="w-10 text-center font-mono">
+                          {field.value || 5}
+                        </span>
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                {/* Initiative */}
+                <FormField
+                  control={form.control}
+                  name="initiative"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Initiative</FormLabel>
+                      <div className="flex items-center gap-4">
+                        <FormControl>
+                          <Slider
+                            min={0}
+                            max={10}
+                            step={0.5}
+                            value={[field.value || 5]}
+                            onValueChange={(value) => field.onChange(value[0])}
+                          />
+                        </FormControl>
+                        <span className="w-10 text-center font-mono">
+                          {field.value || 5}
+                        </span>
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </div>
-              
-              <DialogFooter className="flex justify-end gap-2 mt-6 pt-2 border-t border-cyber-cyan/20">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    // Reset form on cancel
-                    form.reset();
-                    setImagePreview(null);
-                    setStaffMetrics({});
-                    onClose();
-                  }}
-                  className="border-cyber-cyan/50 text-white hover:text-cyber-cyan hover:border-cyber-cyan"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={uploadingImage}
-                  className="cyber-button rounded bg-cyber-cyan hover:bg-cyber-cyan/80 text-black font-medium"
-                >
-                  {uploadingImage ? (
-                    <div className="flex items-center gap-2">
-                      <div className="h-4 w-4 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
-                      <span>Adding...</span>
-                    </div>
-                  ) : "Add Staff"}
-                </Button>
-              </DialogFooter>
-            </form>
-          </Form>
-        </DialogContent>
-      </Dialog>
-      
-      {/* Sheet for evaluation metrics */}
-      {renderEvaluationSheet && renderEvaluationSheet()}
-    </>
+            )}
+            
+            {/* Builder Metrics */}
+            {currentRole === 'Builder' && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Exterior */}
+                <FormField
+                  control={form.control}
+                  name="exterior"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Exterior</FormLabel>
+                      <div className="flex items-center gap-4">
+                        <FormControl>
+                          <Slider
+                            min={0}
+                            max={10}
+                            step={0.5}
+                            value={[field.value || 5]}
+                            onValueChange={(value) => field.onChange(value[0])}
+                          />
+                        </FormControl>
+                        <span className="w-10 text-center font-mono">
+                          {field.value || 5}
+                        </span>
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                {/* Interior */}
+                <FormField
+                  control={form.control}
+                  name="interior"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Interior</FormLabel>
+                      <div className="flex items-center gap-4">
+                        <FormControl>
+                          <Slider
+                            min={0}
+                            max={10}
+                            step={0.5}
+                            value={[field.value || 5]}
+                            onValueChange={(value) => field.onChange(value[0])}
+                          />
+                        </FormControl>
+                        <span className="w-10 text-center font-mono">
+                          {field.value || 5}
+                        </span>
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                {/* Decoration */}
+                <FormField
+                  control={form.control}
+                  name="decoration"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Decoration</FormLabel>
+                      <div className="flex items-center gap-4">
+                        <FormControl>
+                          <Slider
+                            min={0}
+                            max={10}
+                            step={0.5}
+                            value={[field.value || 5]}
+                            onValueChange={(value) => field.onChange(value[0])}
+                          />
+                        </FormControl>
+                        <span className="w-10 text-center font-mono">
+                          {field.value || 5}
+                        </span>
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                {/* Effort */}
+                <FormField
+                  control={form.control}
+                  name="effort"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Effort</FormLabel>
+                      <div className="flex items-center gap-4">
+                        <FormControl>
+                          <Slider
+                            min={0}
+                            max={10}
+                            step={0.5}
+                            value={[field.value || 5]}
+                            onValueChange={(value) => field.onChange(value[0])}
+                          />
+                        </FormControl>
+                        <span className="w-10 text-center font-mono">
+                          {field.value || 5}
+                        </span>
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                {/* Contribution */}
+                <FormField
+                  control={form.control}
+                  name="contribution"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Contribution</FormLabel>
+                      <div className="flex items-center gap-4">
+                        <FormControl>
+                          <Slider
+                            min={0}
+                            max={10}
+                            step={0.5}
+                            value={[field.value || 5]}
+                            onValueChange={(value) => field.onChange(value[0])}
+                          />
+                        </FormControl>
+                        <span className="w-10 text-center font-mono">
+                          {field.value || 5}
+                        </span>
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                {/* Communication */}
+                <FormField
+                  control={form.control}
+                  name="communication"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Communication</FormLabel>
+                      <div className="flex items-center gap-4">
+                        <FormControl>
+                          <Slider
+                            min={0}
+                            max={10}
+                            step={0.5}
+                            value={[field.value || 5]}
+                            onValueChange={(value) => field.onChange(value[0])}
+                          />
+                        </FormControl>
+                        <span className="w-10 text-center font-mono">
+                          {field.value || 5}
+                        </span>
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                {/* Adaptability */}
+                <FormField
+                  control={form.control}
+                  name="adaptability"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Adaptability</FormLabel>
+                      <div className="flex items-center gap-4">
+                        <FormControl>
+                          <Slider
+                            min={0}
+                            max={10}
+                            step={0.5}
+                            value={[field.value || 5]}
+                            onValueChange={(value) => field.onChange(value[0])}
+                          />
+                        </FormControl>
+                        <span className="w-10 text-center font-mono">
+                          {field.value || 5}
+                        </span>
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                {/* Cooperativeness */}
+                <FormField
+                  control={form.control}
+                  name="cooperativeness"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Cooperativeness</FormLabel>
+                      <div className="flex items-center gap-4">
+                        <FormControl>
+                          <Slider
+                            min={0}
+                            max={10}
+                            step={0.5}
+                            value={[field.value || 5]}
+                            onValueChange={(value) => field.onChange(value[0])}
+                          />
+                        </FormControl>
+                        <span className="w-10 text-center font-mono">
+                          {field.value || 5}
+                        </span>
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                {/* Creativity */}
+                <FormField
+                  control={form.control}
+                  name="creativity"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Creativity</FormLabel>
+                      <div className="flex items-center gap-4">
+                        <FormControl>
+                          <Slider
+                            min={0}
+                            max={10}
+                            step={0.5}
+                            value={[field.value || 5]}
+                            onValueChange={(value) => field.onChange(value[0])}
+                          />
+                        </FormControl>
+                        <span className="w-10 text-center font-mono">
+                          {field.value || 5}
+                        </span>
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                {/* Consistency */}
+                <FormField
+                  control={form.control}
+                  name="consistency"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Consistency</FormLabel>
+                      <div className="flex items-center gap-4">
+                        <FormControl>
+                          <Slider
+                            min={0}
+                            max={10}
+                            step={0.5}
+                            value={[field.value || 5]}
+                            onValueChange={(value) => field.onChange(value[0])}
+                          />
+                        </FormControl>
+                        <span className="w-10 text-center font-mono">
+                          {field.value || 5}
+                        </span>
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            )}
+            
+            {/* Manager/Owner Message */}
+            {(currentRole === 'Manager' || currentRole === 'Owner') && (
+              <div className="bg-cyber-darkpurple/50 p-4 rounded-lg border border-cyber-cyan">
+                <p className="text-cyber-cyan">
+                  Managers and Owners automatically receive perfect scores across all metrics.
+                </p>
+              </div>
+            )}
+          </div>
+          
+          {/* Submit Button */}
+          <Button 
+            type="submit" 
+            className="w-full cyber-button-primary" 
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? 'Adding...' : 'Add Staff Member'}
+          </Button>
+        </form>
+      </Form>
+    </div>
   );
 };
 

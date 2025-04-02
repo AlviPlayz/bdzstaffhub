@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { StaffMember, StaffRole } from '@/types/staff';
 import { 
@@ -34,7 +35,9 @@ const AddStaffForm: React.FC<AddStaffFormProps> = ({ isOpen, onClose, onAddStaff
     try {
       let avatarUrl = '';
       if (avatarFile) {
-        avatarUrl = await uploadStaffImage(avatarFile);
+        // Generate a temporary ID for the upload
+        const tempId = `temp-${Date.now()}`;
+        avatarUrl = await uploadStaffImage(avatarFile, tempId, role);
       }
       
       const newStaffData: Omit<StaffMember, 'id'> = {

@@ -1,92 +1,88 @@
 
-import { LetterGrade, StaffMember, PerformanceMetric, StaffRole } from '@/types/staff';
+import { LetterGrade, StaffRole, PerformanceMetric } from '@/types/staff';
 
-// Function to calculate letter grade based on score
+/**
+ * Calculate the letter grade based on a numeric score
+ * @param score Numeric score (0-10)
+ * @param role Optional role parameter to give special grades
+ * @returns Letter grade
+ */
 export const calculateLetterGrade = (score: number, role?: StaffRole): LetterGrade => {
-  // For Managers and Owners, always return SSS+
+  // Special case for managers and owners
   if (role === 'Manager' || role === 'Owner') {
     return 'SSS+';
   }
   
-  if (score >= 9) return 'S+';
-  if (score >= 8) return 'S';
+  // Normal grade calculation for other roles
+  if (score >= 9.5) return 'S+';
+  if (score >= 8.5) return 'S';
   if (score >= 7.5) return 'A+';
-  if (score >= 7) return 'A';
-  if (score >= 6.5) return 'B+';
-  if (score >= 6) return 'B';
-  if (score >= 5) return 'C';
-  if (score >= 4) return 'D';
-  if (score >= 3) return 'E';
+  if (score >= 6.5) return 'A';
+  if (score >= 5.5) return 'B+';
+  if (score >= 4.5) return 'B';
+  if (score >= 3.5) return 'C';
+  if (score >= 2.5) return 'D';
+  if (score >= 1) return 'E';
   return 'E-';
 };
 
-// Function to calculate overall score and grade
-export const calculateOverallScoreAndGrade = (staff: StaffMember): { overallScore: number; overallGrade: LetterGrade } => {
-  // Special case for Managers and Owners
-  if (staff.role === 'Manager' || staff.role === 'Owner') {
-    return { overallScore: 10, overallGrade: 'SSS+' };
-  }
-
-  const metricValues = Object.values(staff.metrics);
-  
-  // Calculate overall score with type safety
-  let totalScore = 0;
-  let validMetrics = 0;
-  
-  metricValues.forEach(metric => {
-    const typedMetric = metric as PerformanceMetric;
-    if (typeof typedMetric.score === 'number') {
-      totalScore += typedMetric.score;
-      validMetrics++;
-    }
-  });
-  
-  const average = validMetrics > 0 ? parseFloat((totalScore / validMetrics).toFixed(1)) : 0;
-  const overallGrade = calculateLetterGrade(average, staff.role);
-
-  return { overallScore: average, overallGrade };
+/**
+ * Helper function to create an "Immeasurable" performance metric
+ */
+export const createImmeasurableMetric = (name: string): PerformanceMetric => {
+  return {
+    id: name.toLowerCase().replace(/\s+/g, '-'),
+    name,
+    score: 10, // We'll give it a 10 score for calculation purposes
+    letterGrade: 'Immeasurable'
+  };
 };
 
-// Create a set of immeasurable metrics for Managers and Owners
-export const createImmeasurableMetrics = (role: StaffRole): Record<string, PerformanceMetric> => {
-  if (role !== 'Manager' && role !== 'Owner') {
-    return {}; // Only create for managers and owners
-  }
-  
-  // Define base metrics that all staff roles have
-  const baseMetrics: Record<string, PerformanceMetric> = {
-    communication: { id: 'communication', name: 'Communication', score: 10, letterGrade: 'SSS+' },
-    adaptability: { id: 'adaptability', name: 'Adaptability', score: 10, letterGrade: 'SSS+' },
-  };
-  
-  // Add moderator-specific metrics
-  const moderatorMetrics: Record<string, PerformanceMetric> = {
-    responsiveness: { id: 'responsiveness', name: 'Responsiveness', score: 10, letterGrade: 'SSS+' },
-    fairness: { id: 'fairness', name: 'Fairness', score: 10, letterGrade: 'SSS+' },
-    conflictResolution: { id: 'conflictResolution', name: 'Conflict Resolution', score: 10, letterGrade: 'SSS+' },
-    ruleEnforcement: { id: 'ruleEnforcement', name: 'Rule Enforcement', score: 10, letterGrade: 'SSS+' },
-    engagement: { id: 'engagement', name: 'Engagement', score: 10, letterGrade: 'SSS+' },
-    supportiveness: { id: 'supportiveness', name: 'Supportiveness', score: 10, letterGrade: 'SSS+' },
-    objectivity: { id: 'objectivity', name: 'Objectivity', score: 10, letterGrade: 'SSS+' },
-    initiative: { id: 'initiative', name: 'Initiative', score: 10, letterGrade: 'SSS+' },
-  };
-  
-  // Add builder-specific metrics
-  const builderMetrics: Record<string, PerformanceMetric> = {
-    exterior: { id: 'exterior', name: 'Exterior', score: 10, letterGrade: 'SSS+' },
-    interior: { id: 'interior', name: 'Interior', score: 10, letterGrade: 'SSS+' },
-    decoration: { id: 'decoration', name: 'Decoration', score: 10, letterGrade: 'SSS+' },
-    effort: { id: 'effort', name: 'Effort', score: 10, letterGrade: 'SSS+' },
-    contribution: { id: 'contribution', name: 'Contribution', score: 10, letterGrade: 'SSS+' },
-    cooperativeness: { id: 'cooperativeness', name: 'Cooperativeness', score: 10, letterGrade: 'SSS+' },
-    creativity: { id: 'creativity', name: 'Creativity', score: 10, letterGrade: 'SSS+' },
-    consistency: { id: 'consistency', name: 'Consistency', score: 10, letterGrade: 'SSS+' },
-  };
-  
-  // Combine all metrics for managers
+/**
+ * Create a set of Immeasurable metrics for Manager or Owner
+ */
+export const createImmeasurableMetrics = (role: 'Manager' | 'Owner'): Record<string, PerformanceMetric> => {
   return {
-    ...baseMetrics,
-    ...moderatorMetrics,
-    ...builderMetrics
+    // Moderator metrics
+    responsiveness: createImmeasurableMetric('Responsiveness'),
+    fairness: createImmeasurableMetric('Fairness'),
+    communication: createImmeasurableMetric('Communication'),
+    conflictResolution: createImmeasurableMetric('Conflict Resolution'),
+    ruleEnforcement: createImmeasurableMetric('Rule Enforcement'),
+    engagement: createImmeasurableMetric('Engagement'),
+    supportiveness: createImmeasurableMetric('Supportiveness'),
+    adaptability: createImmeasurableMetric('Adaptability'),
+    objectivity: createImmeasurableMetric('Objectivity'),
+    initiative: createImmeasurableMetric('Initiative'),
+    // Builder metrics
+    exterior: createImmeasurableMetric('Exterior'),
+    interior: createImmeasurableMetric('Interior'),
+    decoration: createImmeasurableMetric('Decoration'),
+    effort: createImmeasurableMetric('Effort'),
+    contribution: createImmeasurableMetric('Contribution'),
+    cooperativeness: createImmeasurableMetric('Cooperativeness'),
+    creativity: createImmeasurableMetric('Creativity'),
+    consistency: createImmeasurableMetric('Consistency')
   };
+};
+
+/**
+ * Get color class based on letter grade
+ */
+export const getGradeColorClass = (grade: LetterGrade): string => {
+  switch(grade) {
+    case 'Immeasurable': return 'text-[#ff00ff] font-bold';
+    case 'SSS+': return 'text-[#ff00ff] font-bold';
+    case 'S+': return 'text-[#ff9900] font-bold';
+    case 'S': return 'text-[#ffcc00] font-bold';
+    case 'A+': return 'text-[#99ff00] font-bold';
+    case 'A': return 'text-[#33cc33] font-bold';
+    case 'B+': return 'text-[#00ccff] font-bold';
+    case 'B': return 'text-[#3399ff] font-bold';
+    case 'C': return 'text-[#cc99ff] font-bold';
+    case 'D': return 'text-[#ff6666] font-bold';
+    case 'E': return 'text-[#cc3300] font-bold';
+    case 'E-': return 'text-[#990000] font-bold';
+    default: return 'text-white font-bold';
+  }
 };

@@ -9,6 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { getGradeColorClass } from '@/services/staff/staffGrading';
 
 interface StaffMetricsEditorProps {
   selectedStaff: StaffMember | null;
@@ -25,7 +26,6 @@ const StaffMetricsEditor: React.FC<StaffMetricsEditorProps> = ({
   onCancelEdit,
   onRemoveStaff
 }) => {
-  const [isEditing, setIsEditing] = useState(false);
   const [rank, setRank] = useState<string>('');
   const [imageError, setImageError] = useState(false);
   
@@ -64,13 +64,21 @@ const StaffMetricsEditor: React.FC<StaffMetricsEditorProps> = ({
     
     try {
       // Add a timestamp to bust cache
-      const url = new URL(avatarUrl);
-      url.searchParams.set('t', Date.now().toString());
-      return url.toString();
+      const timestamp = Date.now().toString();
+      
+      // Check if it's already a URL object
+      if (avatarUrl.startsWith('http')) {
+        const url = new URL(avatarUrl);
+        url.searchParams.set('t', timestamp);
+        return url.toString();
+      } else {
+        // For local paths or other formats
+        const separator = avatarUrl.includes('?') ? '&' : '?';
+        return `${avatarUrl}${separator}t=${timestamp}`;
+      }
     } catch (e) {
-      // For non-URL strings, just add a timestamp parameter
-      const separator = avatarUrl.includes('?') ? '&' : '?';
-      return `${avatarUrl}${separator}t=${Date.now()}`;
+      console.error('Error formatting avatar URL:', e);
+      return avatarUrl;
     }
   };
   
@@ -137,6 +145,7 @@ const StaffMetricsEditor: React.FC<StaffMetricsEditorProps> = ({
                 <Select 
                   value={rank}
                   onValueChange={handleRankChange}
+                  defaultValue={rank || undefined}
                 >
                   <SelectTrigger className="bg-cyber-black border border-cyber-cyan/40 text-white h-7 text-xs py-0">
                     <SelectValue placeholder="Select rank" />
@@ -153,32 +162,36 @@ const StaffMetricsEditor: React.FC<StaffMetricsEditorProps> = ({
         <div className="space-y-6 mb-6">
           <h3 className="text-xl font-digital text-cyber-cyan border-b border-cyber-cyan/30 pb-2">Performance Metrics</h3>
           
-          {Object.entries(selectedStaff.metrics).map(([key, metric]) => (
-            <div key={key} className="space-y-1">
-              <div className="flex justify-between items-center">
-                <label htmlFor={`metric-${key}`} className="text-white">{metric.name}</label>
-                <span className={`letter-grade text-sm`}>
-                  {isManagerOrOwner ? 'SSS+' : metric.letterGrade}
-                </span>
+          {Object.entries(selectedStaff.metrics).map(([key, metric]) => {
+            const gradeColorClass = getGradeColorClass(metric.letterGrade);
+            
+            return (
+              <div key={key} className="space-y-1">
+                <div className="flex justify-between items-center">
+                  <label htmlFor={`metric-${key}`} className="text-white">{metric.name}</label>
+                  <span className={`letter-grade text-sm ${gradeColorClass}`}>
+                    {isManagerOrOwner ? 'Immeasurable' : metric.letterGrade}
+                  </span>
+                </div>
+                <div className="flex gap-4 items-center">
+                  <input
+                    id={`metric-${key}`}
+                    type="range"
+                    min="0"
+                    max="10"
+                    step="0.1"
+                    value={isManagerOrOwner ? 10 : metric.score}
+                    onChange={(e) => !isManagerOrOwner && onScoreChange(key, parseFloat(e.target.value))}
+                    className="w-full cyber-range"
+                    disabled={isManagerOrOwner}
+                  />
+                  <span className="text-cyber-cyan font-mono w-20 text-right">
+                    {isManagerOrOwner ? 'Immeasurable' : metric.score.toFixed(1)}
+                  </span>
+                </div>
               </div>
-              <div className="flex gap-4 items-center">
-                <input
-                  id={`metric-${key}`}
-                  type="range"
-                  min="0"
-                  max="10"
-                  step="0.1"
-                  value={isManagerOrOwner ? 10 : metric.score}
-                  onChange={(e) => !isManagerOrOwner && onScoreChange(key, parseFloat(e.target.value))}
-                  className="w-full cyber-range"
-                  disabled={isManagerOrOwner}
-                />
-                <span className="text-cyber-cyan font-mono w-10 text-right">
-                  {isManagerOrOwner ? 'Immeasurable' : metric.score.toFixed(1)}
-                </span>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
         
         <div className="flex gap-4 justify-between">

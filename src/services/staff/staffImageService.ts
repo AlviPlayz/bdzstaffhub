@@ -30,20 +30,17 @@ export const initializeStaffImageStorage = async (): Promise<void> => {
         
         if (createError) {
           console.error('Error creating staff_images bucket:', createError.message);
-          // Don't throw an error - we'll try direct uploads anyway
         } else {
           console.log('Created staff_images storage bucket successfully');
         }
       } catch (bucketError) {
         console.error('Failed to create bucket:', bucketError);
-        // Continue execution - uploads will be attempted even if bucket creation fails
       }
     } else {
       console.log('staff_images bucket already exists');
     }
   } catch (error) {
     console.error('Error initializing staff image storage:', error);
-    // Don't throw error - allow application to continue
   }
 };
 
@@ -105,7 +102,7 @@ export const uploadStaffImage = async (file: File, staffId: string, role: StaffR
     
     console.log(`Uploading to path: ${filePath}`);
     
-    // Upload the image - retry mechanism
+    // Upload the image - retry mechanism with better error handling
     let uploadResult;
     let retries = 0;
     const maxRetries = 3;
@@ -116,19 +113,24 @@ export const uploadStaffImage = async (file: File, staffId: string, role: StaffR
           .from('staff_images')
           .upload(filePath, file, { 
             upsert: true,
-            cacheControl: 'no-cache'
+            cacheControl: 'public, max-age=0'
           });
         
         if (!uploadResult.error) break;
         
+        console.error(`Upload attempt ${retries + 1} failed:`, uploadResult.error);
         retries++;
-        console.log(`Upload attempt ${retries} failed, retrying...`);
-        await new Promise(resolve => setTimeout(resolve, 500)); // Wait before retry
+        
+        if (retries >= maxRetries) {
+          throw new Error(`Upload failed after ${maxRetries} attempts: ${uploadResult.error.message}`);
+        }
+        
+        await new Promise(resolve => setTimeout(resolve, 1000)); // Wait longer between retries
       } catch (uploadError) {
-        console.error(`Upload attempt ${retries} error:`, uploadError);
+        console.error(`Upload attempt ${retries + 1} error:`, uploadError);
         retries++;
         if (retries >= maxRetries) throw uploadError;
-        await new Promise(resolve => setTimeout(resolve, 500)); // Wait before retry
+        await new Promise(resolve => setTimeout(resolve, 1000));
       }
     }
     
@@ -139,22 +141,38 @@ export const uploadStaffImage = async (file: File, staffId: string, role: StaffR
     
     console.log('Image upload successful, getting public URL');
     
-    // Get the public URL
+    // Get the public URL with stronger cache busting
     const { data: publicUrlData } = supabase.storage
       .from('staff_images')
-      .getPublicUrl(filePath);
+      .getPublicUrl(filePath, {
+        download: false,
+      });
     
     if (!publicUrlData || !publicUrlData.publicUrl) {
       console.error('Failed to get public URL');
       return null;
     }
     
-    // Add a cache-busting parameter
+    // Add a cache-busting parameter with timestamp
     const publicUrl = new URL(publicUrlData.publicUrl);
     publicUrl.searchParams.set('t', timestamp.toString());
     
-    console.log(`Generated public URL: ${publicUrl.toString()}`);
-    return publicUrl.toString();
+    const finalUrl = publicUrl.toString();
+    console.log(`Generated public URL: ${finalUrl}`);
+    
+    // Test the URL accessibility
+    try {
+      const testFetch = await fetch(finalUrl, { method: 'HEAD' });
+      if (!testFetch.ok) {
+        console.warn(`Image URL test failed with status ${testFetch.status}. URL might not be accessible.`);
+      } else {
+        console.log('Image URL is accessible');
+      }
+    } catch (fetchError) {
+      console.warn('Could not verify image URL accessibility:', fetchError);
+    }
+    
+    return finalUrl;
   } catch (error) {
     console.error('Error uploading staff image:', error);
     return null;
@@ -197,14 +215,22 @@ export const getStaffImageUrl = async (staffId: string): Promise<string> => {
       return '/placeholder.svg';
     }
     
-    // Extract the folder path if it exists
-    const filePath = latestFile.name;
+    // Get directory the file is in, if any
+    const pathParts = latestFile.name.split('/');
+    let filePath = latestFile.name;
     
-    // Get the public URL with a timestamp to prevent caching
+    // If file is in a directory within bucket
+    if (latestFile.id && latestFile.id.includes('/')) {
+      filePath = latestFile.id;
+    }
+    
+    // Get the public URL with strong cache busting
     const timestamp = Date.now();
     const { data: publicUrlData } = supabase.storage
       .from('staff_images')
-      .getPublicUrl(filePath);
+      .getPublicUrl(filePath, {
+        download: false,
+      });
     
     if (!publicUrlData.publicUrl) {
       return '/placeholder.svg';

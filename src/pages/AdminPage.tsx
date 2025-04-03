@@ -217,7 +217,7 @@ const AdminPage: React.FC = () => {
         sortAsc={sortAsc}
         onSearchChange={setSearchTerm}
         onFilterChange={setFilterRole}
-        onSortChange={setSortBy}
+        onSortChange={toggleSort}
         onSortDirectionChange={() => setSortAsc(!sortAsc)}
         onAddStaffClick={() => setShowAddStaffModal(true)}
       />

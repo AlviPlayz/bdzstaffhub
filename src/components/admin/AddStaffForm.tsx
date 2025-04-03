@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { StaffMember, StaffRole } from '@/types/staff';
+import { StaffMember, StaffRole, LetterGrade } from '@/types/staff';
 import { 
   Dialog, 
   DialogContent, 
@@ -151,36 +151,36 @@ const AddStaffForm: React.FC<AddStaffFormProps> = ({ isOpen, onClose, onAddStaff
       } else if (values.role === 'Moderator') {
         // Define moderator metrics
         metrics = {
-          responsiveness: { id: 'responsiveness', name: 'Responsiveness', score: 7, letterGrade: 'B' },
-          fairness: { id: 'fairness', name: 'Fairness', score: 7, letterGrade: 'B' },
-          communication: { id: 'communication', name: 'Communication', score: 7, letterGrade: 'B' },
-          conflictResolution: { id: 'conflictResolution', name: 'Conflict Resolution', score: 7, letterGrade: 'B' },
-          ruleEnforcement: { id: 'ruleEnforcement', name: 'Rule Enforcement', score: 7, letterGrade: 'B' },
-          engagement: { id: 'engagement', name: 'Engagement', score: 7, letterGrade: 'B' },
-          supportiveness: { id: 'supportiveness', name: 'Supportiveness', score: 7, letterGrade: 'B' },
-          adaptability: { id: 'adaptability', name: 'Adaptability', score: 7, letterGrade: 'B' },
-          objectivity: { id: 'objectivity', name: 'Objectivity', score: 7, letterGrade: 'B' },
-          initiative: { id: 'initiative', name: 'Initiative', score: 7, letterGrade: 'B' },
+          responsiveness: { id: 'responsiveness', name: 'Responsiveness', score: 7, letterGrade: 'B' as LetterGrade },
+          fairness: { id: 'fairness', name: 'Fairness', score: 7, letterGrade: 'B' as LetterGrade },
+          communication: { id: 'communication', name: 'Communication', score: 7, letterGrade: 'B' as LetterGrade },
+          conflictResolution: { id: 'conflictResolution', name: 'Conflict Resolution', score: 7, letterGrade: 'B' as LetterGrade },
+          ruleEnforcement: { id: 'ruleEnforcement', name: 'Rule Enforcement', score: 7, letterGrade: 'B' as LetterGrade },
+          engagement: { id: 'engagement', name: 'Engagement', score: 7, letterGrade: 'B' as LetterGrade },
+          supportiveness: { id: 'supportiveness', name: 'Supportiveness', score: 7, letterGrade: 'B' as LetterGrade },
+          adaptability: { id: 'adaptability', name: 'Adaptability', score: 7, letterGrade: 'B' as LetterGrade },
+          objectivity: { id: 'objectivity', name: 'Objectivity', score: 7, letterGrade: 'B' as LetterGrade },
+          initiative: { id: 'initiative', name: 'Initiative', score: 7, letterGrade: 'B' as LetterGrade },
         };
       } else if (values.role === 'Builder') {
         // Define builder metrics
         metrics = {
-          exterior: { id: 'exterior', name: 'Exterior', score: 7, letterGrade: 'B' },
-          interior: { id: 'interior', name: 'Interior', score: 7, letterGrade: 'B' },
-          decoration: { id: 'decoration', name: 'Decoration', score: 7, letterGrade: 'B' },
-          effort: { id: 'effort', name: 'Effort', score: 7, letterGrade: 'B' },
-          contribution: { id: 'contribution', name: 'Contribution', score: 7, letterGrade: 'B' },
-          communication: { id: 'communication', name: 'Communication', score: 7, letterGrade: 'B' },
-          adaptability: { id: 'adaptability', name: 'Adaptability', score: 7, letterGrade: 'B' },
-          cooperativeness: { id: 'cooperativeness', name: 'Cooperativeness', score: 7, letterGrade: 'B' },
-          creativity: { id: 'creativity', name: 'Creativity', score: 7, letterGrade: 'B' },
-          consistency: { id: 'consistency', name: 'Consistency', score: 7, letterGrade: 'B' },
+          exterior: { id: 'exterior', name: 'Exterior', score: 7, letterGrade: 'B' as LetterGrade },
+          interior: { id: 'interior', name: 'Interior', score: 7, letterGrade: 'B' as LetterGrade },
+          decoration: { id: 'decoration', name: 'Decoration', score: 7, letterGrade: 'B' as LetterGrade },
+          effort: { id: 'effort', name: 'Effort', score: 7, letterGrade: 'B' as LetterGrade },
+          contribution: { id: 'contribution', name: 'Contribution', score: 7, letterGrade: 'B' as LetterGrade },
+          communication: { id: 'communication', name: 'Communication', score: 7, letterGrade: 'B' as LetterGrade },
+          adaptability: { id: 'adaptability', name: 'Adaptability', score: 7, letterGrade: 'B' as LetterGrade },
+          cooperativeness: { id: 'cooperativeness', name: 'Cooperativeness', score: 7, letterGrade: 'B' as LetterGrade },
+          creativity: { id: 'creativity', name: 'Creativity', score: 7, letterGrade: 'B' as LetterGrade },
+          consistency: { id: 'consistency', name: 'Consistency', score: 7, letterGrade: 'B' as LetterGrade },
         };
       }
       
       // Set overall score and grade
       const overallScore = values.role === 'Manager' || values.role === 'Owner' ? 10 : 7;
-      const overallGrade = values.role === 'Manager' || values.role === 'Owner' ? 'SSS+' : 'B';
+      const overallGrade = values.role === 'Manager' || values.role === 'Owner' ? 'SSS+' as LetterGrade : 'B' as LetterGrade;
       
       // Create the new staff member object
       const newStaffData: Omit<StaffMember, 'id'> = {

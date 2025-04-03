@@ -10,7 +10,7 @@ export const createMetric = (name: string, score: number, role?: StaffRole): Per
       id: name.toLowerCase().replace(/\s+/g, '-'),
       name,
       score: 10, // Maximum score for display purposes
-      letterGrade: 'SSS+' as LetterGrade
+      letterGrade: 'Immeasurable' as LetterGrade
     };
   }
   
@@ -58,7 +58,7 @@ export const transformToStaffMember = (row: any, role: StaffRole): StaffMember =
       consistency: createMetric('Consistency', typeof row.consistency !== 'undefined' ? row.consistency : 0)
     };
   } else if (role === 'Manager' || role === 'Owner') {
-    // For Manager and Owner, always set maximum scores
+    // For Manager and Owner, always set immeasurable scores
     metrics = {
       // Moderator metrics
       responsiveness: createMetric('Responsiveness', 10, role),
@@ -107,6 +107,12 @@ export const transformToStaffMember = (row: any, role: StaffRole): StaffMember =
     overallGrade = row.overall_grade || calculateLetterGrade(overallScore);
   }
   
+  // Validate overallGrade to ensure it's a LetterGrade
+  const validGrades: LetterGrade[] = ['S+', 'S', 'A+', 'A', 'B+', 'B', 'C', 'D', 'E', 'E-', 'SSS+', 'Immeasurable'];
+  if (!validGrades.includes(overallGrade as any)) {
+    overallGrade = calculateLetterGrade(overallScore, role);
+  }
+  
   return {
     id: row.id,
     name: row.name,
@@ -144,7 +150,7 @@ export const transformToDatabase = (staff: StaffMember): any => {
     profile_image_url: staff.avatar
   };
 
-  // Set overall_grade
+  // Set overall_grade - always SSS+ for Manager/Owner
   dbObject.overall_grade = staff.role === 'Manager' || staff.role === 'Owner' 
     ? 'SSS+' 
     : staff.overallGrade;
@@ -176,7 +182,7 @@ export const transformToDatabase = (staff: StaffMember): any => {
     dbObject.communication = metrics.communication.score;
     dbObject.adaptability = metrics.adaptability.score;
     dbObject.cooperativeness = metrics.cooperativeness.score;
-    // Only add these if they exist in the database schema
+    // Only add these if they exist in the metrics
     if (metrics.creativity) dbObject.creativity = metrics.creativity.score;
     if (metrics.consistency) dbObject.consistency = metrics.consistency.score;
     // Add staff_id if not present

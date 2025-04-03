@@ -22,18 +22,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isAdmin, setIsAdmin] = useState(false);
 
   // Check if user was previously authenticated as admin
+  // Use sessionStorage instead of localStorage to ensure access is lost on refresh
   useEffect(() => {
-    const adminStatus = localStorage.getItem('bdzStaffHub_admin');
+    const adminStatus = sessionStorage.getItem('bdzStaffHub_admin');
     
     if (adminStatus === 'true') {
       setIsAdmin(true);
+    } else {
+      // Force reset admin status to ensure no one has admin access without entering the code
+      setIsAdmin(false);
+      sessionStorage.removeItem('bdzStaffHub_admin');
     }
   }, []);
 
   const login = (accessCode: string): boolean => {
     if (accessCode === ADMIN_ACCESS_CODE) {
       setIsAdmin(true);
-      localStorage.setItem('bdzStaffHub_admin', 'true');
+      // Store admin status in sessionStorage (not localStorage) to ensure it's lost on refresh
+      sessionStorage.setItem('bdzStaffHub_admin', 'true');
       return true;
     } else {
       return false;
@@ -42,7 +48,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = () => {
     setIsAdmin(false);
-    localStorage.removeItem('bdzStaffHub_admin');
+    sessionStorage.removeItem('bdzStaffHub_admin');
   };
 
   return (

@@ -1,6 +1,12 @@
 
 import { getAllStaff } from './staffQueries';
-import { addStaffMember, updateStaffMember, removeStaffMember, createStaffMember, deleteStaffMember } from './staffMutations';
+import { 
+  addStaffMember, 
+  updateStaffMember, 
+  removeStaffMember, 
+  createStaffMember, 
+  deleteStaffMember 
+} from './mutations';
 import { getStaffMemberById, calculateOverallScoreAndGrade } from './staffUtils';
 import { uploadStaffImage, updateStaffAvatar, getStaffImageUrl, initializeStaffImageStorage } from './staffImageService';
 import { subscribeToRealTimeUpdates } from './staffRealtimeService';

@@ -1,6 +1,6 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { StaffMember, StaffRole, LetterGrade } from '@/types/staff';
+import { StaffMember, StaffRole, LetterGrade, ModeratorMetrics, BuilderMetrics, ManagerMetrics, OwnerMetrics } from '@/types/staff';
 import { transformToStaffMember, transformToDatabase } from './staffTransforms';
 import { cleanupPreviousImages } from './staffImageService';
 import { createImmeasurableMetrics } from './staffGrading';
@@ -23,8 +23,12 @@ export const addStaffMember = async (data: any) => {
     
     // For Managers and Owners, ensure they have proper metrics
     if (staffData.role === 'Manager' || staffData.role === 'Owner') {
-      // Replace metrics with immeasurable ones
-      staffData.metrics = createImmeasurableMetrics(staffData.role);
+      // Replace metrics with immeasurable ones - properly cast to the correct type
+      if (staffData.role === 'Manager') {
+        staffData.metrics = createImmeasurableMetrics(staffData.role) as ManagerMetrics;
+      } else {
+        staffData.metrics = createImmeasurableMetrics(staffData.role) as OwnerMetrics;
+      }
       // Set SSS+ overall grade
       staffData.overallGrade = 'SSS+' as LetterGrade;
     }
@@ -63,7 +67,12 @@ export const addStaffMember = async (data: any) => {
     
     // For Managers and Owners, ensure they have immeasurable metrics
     if (staffData.role === 'Manager' || staffData.role === 'Owner') {
-      staffMember.metrics = createImmeasurableMetrics(staffData.role);
+      // Cast to the proper type based on role
+      if (staffData.role === 'Manager') {
+        staffMember.metrics = createImmeasurableMetrics(staffData.role) as ManagerMetrics;
+      } else {
+        staffMember.metrics = createImmeasurableMetrics(staffData.role) as OwnerMetrics;
+      }
       staffMember.overallGrade = 'SSS+';
     }
     
@@ -81,7 +90,12 @@ export const updateStaffMember = async (staff: StaffMember) => {
     
     // For Managers and Owners, ensure they have immeasurable metrics
     if (staff.role === 'Manager' || staff.role === 'Owner') {
-      staff.metrics = createImmeasurableMetrics(staff.role);
+      // Cast to the proper type based on role
+      if (staff.role === 'Manager') {
+        staff.metrics = createImmeasurableMetrics(staff.role) as ManagerMetrics;
+      } else {
+        staff.metrics = createImmeasurableMetrics(staff.role) as OwnerMetrics;
+      }
       staff.overallGrade = 'SSS+';
     }
     
@@ -181,8 +195,12 @@ export const createStaffMember = async (data: Omit<StaffMember, 'id'>) => {
     
     // For Managers and Owners, ensure they have proper metrics
     if (staffData.role === 'Manager' || staffData.role === 'Owner') {
-      // Replace metrics with immeasurable ones
-      staffData.metrics = createImmeasurableMetrics(staffData.role);
+      // Replace metrics with immeasurable ones - properly cast to the correct type
+      if (staffData.role === 'Manager') {
+        staffData.metrics = createImmeasurableMetrics(staffData.role) as ManagerMetrics;
+      } else {
+        staffData.metrics = createImmeasurableMetrics(staffData.role) as OwnerMetrics;
+      }
       // Set SSS+ overall grade
       staffData.overallGrade = 'SSS+';
     }
@@ -254,7 +272,12 @@ export const createStaffMember = async (data: Omit<StaffMember, 'id'>) => {
     
     // For Managers and Owners, ensure they have immeasurable metrics
     if (data.role === 'Manager' || data.role === 'Owner') {
-      transformedResult.metrics = createImmeasurableMetrics(data.role);
+      // Cast to the proper type based on role
+      if (data.role === 'Manager') {
+        transformedResult.metrics = createImmeasurableMetrics(data.role) as ManagerMetrics;
+      } else {
+        transformedResult.metrics = createImmeasurableMetrics(data.role) as OwnerMetrics;
+      }
       transformedResult.overallGrade = 'SSS+';
     }
     

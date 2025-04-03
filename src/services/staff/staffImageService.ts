@@ -17,7 +17,7 @@ export const initializeStaffImageStorage = async (): Promise<void> => {
       return;
     }
     
-    // Create staff_images bucket if it doesn't exist
+    // Create staff_images bucket if it doesn't exist (this will likely not be needed anymore after SQL migration)
     const bucketExists = buckets.find(bucket => bucket.name === 'staff_images');
     
     if (!bucketExists) {
@@ -113,7 +113,7 @@ export const uploadStaffImage = async (file: File, staffId: string, role: StaffR
           .from('staff_images')
           .upload(filePath, file, { 
             upsert: true,
-            cacheControl: 'public, max-age=0'
+            cacheControl: '3600'
           });
         
         if (!uploadResult.error) break;
@@ -144,9 +144,7 @@ export const uploadStaffImage = async (file: File, staffId: string, role: StaffR
     // Get the public URL with stronger cache busting
     const { data: publicUrlData } = supabase.storage
       .from('staff_images')
-      .getPublicUrl(filePath, {
-        download: false,
-      });
+      .getPublicUrl(filePath);
     
     if (!publicUrlData || !publicUrlData.publicUrl) {
       console.error('Failed to get public URL');
@@ -228,9 +226,7 @@ export const getStaffImageUrl = async (staffId: string): Promise<string> => {
     const timestamp = Date.now();
     const { data: publicUrlData } = supabase.storage
       .from('staff_images')
-      .getPublicUrl(filePath, {
-        download: false,
-      });
+      .getPublicUrl(filePath);
     
     if (!publicUrlData.publicUrl) {
       return '/placeholder.svg';

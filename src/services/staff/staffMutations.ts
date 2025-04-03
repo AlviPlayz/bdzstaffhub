@@ -1,17 +1,33 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { StaffMember, StaffRole } from '@/types/staff';
+import { StaffMember, StaffRole, LetterGrade } from '@/types/staff';
 import { transformToStaffMember, transformToDatabase } from './staffTransforms';
 import { cleanupPreviousImages } from './staffImageService';
+import { createImmeasurableMetrics } from './staffGrading';
 
 // Function to add a new staff member
 export const addStaffMember = async (data: any) => {
   try {
-    // For safety, ensure rank exists with a default value if needed
-    const staffData = {
-      ...data,
-      rank: data.rank || 'Trial' // Provide a default rank if not present
-    };
+    // Set default rank based on role if not provided
+    let staffData = { ...data };
+    
+    if (!staffData.rank) {
+      if (staffData.role === 'Moderator') {
+        staffData.rank = 'Trial Mod';
+      } else if (staffData.role === 'Builder') {
+        staffData.rank = 'Trial Builder';
+      } else if (staffData.role === 'Manager' || staffData.role === 'Owner') {
+        staffData.rank = 'Manager';
+      }
+    }
+    
+    // For Managers and Owners, ensure they have proper metrics
+    if (staffData.role === 'Manager' || staffData.role === 'Owner') {
+      // Replace metrics with immeasurable ones
+      staffData.metrics = createImmeasurableMetrics(staffData.role);
+      // Set SSS+ overall grade
+      staffData.overallGrade = 'SSS+' as LetterGrade;
+    }
     
     let result;
     
@@ -43,7 +59,15 @@ export const addStaffMember = async (data: any) => {
     }
 
     // Transform the result back to a StaffMember before returning
-    return transformToStaffMember(result[0], staffData.role);
+    const staffMember = transformToStaffMember(result[0], staffData.role);
+    
+    // For Managers and Owners, ensure they have immeasurable metrics
+    if (staffData.role === 'Manager' || staffData.role === 'Owner') {
+      staffMember.metrics = createImmeasurableMetrics(staffData.role);
+      staffMember.overallGrade = 'SSS+';
+    }
+    
+    return staffMember;
   } catch (error) {
     console.error('Error adding staff member:', error);
     throw error;
@@ -54,6 +78,13 @@ export const addStaffMember = async (data: any) => {
 export const updateStaffMember = async (staff: StaffMember) => {
   try {
     console.log(`updateStaffMember: Updating staff member ${staff.id} (${staff.name})`);
+    
+    // For Managers and Owners, ensure they have immeasurable metrics
+    if (staff.role === 'Manager' || staff.role === 'Owner') {
+      staff.metrics = createImmeasurableMetrics(staff.role);
+      staff.overallGrade = 'SSS+';
+    }
+    
     const dbData = transformToDatabase(staff);
     
     // Ensure avatar URL is correctly set
@@ -135,11 +166,28 @@ export const createStaffMember = async (data: Omit<StaffMember, 'id'>) => {
   try {
     console.log(`createStaffMember: Adding new ${data.role} - ${data.name}`);
     
-    // Make a deep copy of the staff data
-    const staffData = {
-      ...data,
-      id: crypto.randomUUID() // Temporary ID for transformation
-    } as StaffMember;
+    // Set default rank based on role if not provided
+    let staffData = { ...data } as StaffMember;
+    
+    if (!staffData.rank) {
+      if (staffData.role === 'Moderator') {
+        staffData.rank = 'Trial Mod';
+      } else if (staffData.role === 'Builder') {
+        staffData.rank = 'Trial Builder';
+      } else if (staffData.role === 'Manager' || staffData.role === 'Owner') {
+        staffData.rank = 'Manager';
+      }
+    }
+    
+    // For Managers and Owners, ensure they have proper metrics
+    if (staffData.role === 'Manager' || staffData.role === 'Owner') {
+      // Replace metrics with immeasurable ones
+      staffData.metrics = createImmeasurableMetrics(staffData.role);
+      // Set SSS+ overall grade
+      staffData.overallGrade = 'SSS+';
+    }
+    
+    staffData.id = crypto.randomUUID(); // Temporary ID for transformation
     
     const dbData = transformToDatabase(staffData);
     
@@ -203,6 +251,12 @@ export const createStaffMember = async (data: Omit<StaffMember, 'id'>) => {
     
     // Transform the result back to a StaffMember before returning
     const transformedResult = transformToStaffMember(result, data.role);
+    
+    // For Managers and Owners, ensure they have immeasurable metrics
+    if (data.role === 'Manager' || data.role === 'Owner') {
+      transformedResult.metrics = createImmeasurableMetrics(data.role);
+      transformedResult.overallGrade = 'SSS+';
+    }
     
     // Make sure the avatar URL is preserved
     if (data.avatar && data.avatar !== '/placeholder.svg') {

@@ -3,18 +3,21 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>neon-competence-hub</title>
+    <title>BDZ: Staff Hub</title>
     <meta name="description" content="Lovable Generated Project" />
     <meta name="author" content="Lovable" />
+
+    <!-- Favicon -->
+    <link rel="icon" href="/public/lovable-uploads/1b7c38ff-b138-48a0-a410-f92a9d338df1.png" type="image/png" />
 
     <meta property="og:title" content="Lovable Generated Project" />
     <meta property="og:description" content="Lovable Generated Project" />
     <meta property="og:type" content="website" />
-    <meta property="og:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
+    <meta property="og:image" content="/public/lovable-uploads/1b7c38ff-b138-48a0-a410-f92a9d338df1.png" type="image/png" />
 
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:site" content="@lovable_dev" />
-    <meta name="twitter:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
+    <meta name="twitter:image" content="/public/lovable-uploads/1b7c38ff-b138-48a0-a410-f92a9d338df1.png" />
   </head>
 
   <body>
@@ -22,5 +25,46 @@
     <!-- IMPORTANT: DO NOT REMOVE THIS SCRIPT TAG OR THIS VERY COMMENT! -->
     <script src="https://cdn.gpteng.co/gptengineer.js" type="module"></script>
     <script type="module" src="/src/main.tsx"></script>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", () => {
+          const clickSound = new Audio("/lovable-uploads/383212__jofae__sci-fi-click.wav");
+          const ambianceSound = new Audio("/lovable-uploads/559085__nox_sound__ambiance_glitchy_computer_loop_mono.wav");
+          const popupSound = new Audio("/lovable-uploads/657945__matrixxx__scifi-inspect-sound-ui-or-in-game-notification-01.wav");
+
+          ambianceSound.loop = true;
+          ambianceSound.volume = 0.5;
+
+          let started = false;
+
+          // Start ambiance sound after first interaction
+          document.addEventListener("click", () => {
+              if (!started) {
+                  ambianceSound.play().catch(err => console.error("Autoplay blocked:", err));
+                  started = true;
+              }
+              clickSound.currentTime = 0;
+              clickSound.play().catch(err => console.error("Click sound error:", err));
+          });
+
+          // Detect if a pop-up, modal, or new page section appears
+          const observer = new MutationObserver(mutations => {
+              mutations.forEach(mutation => {
+                  mutation.addedNodes.forEach(node => {
+                      if (node.nodeType === 1) { // Ensure it's an element
+                          const computedStyle = window.getComputedStyle(node);
+                          if (computedStyle.display !== "none" && computedStyle.visibility !== "hidden") {
+                              popupSound.currentTime = 0;
+                              popupSound.play().catch(err => console.error("Popup sound error:", err));
+                          }
+                      }
+                  });
+              });
+          });
+
+          // Observe body for changes (popups, modals, new elements appearing)
+          observer.observe(document.body, { childList: true, subtree: true });
+      });
+    </script>
   </body>
 </html>

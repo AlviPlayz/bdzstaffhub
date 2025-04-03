@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useStaff } from '@/contexts/StaffContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { StaffMember, StaffRole } from '@/types/staff';
+import { StaffMember, StaffRole, LetterGrade } from '@/types/staff';
 import { toast } from '@/hooks/use-toast';
 import LoadingState from '@/components/LoadingState';
 import { useNavigate } from 'react-router-dom';
@@ -133,7 +133,7 @@ const AdminPage: React.FC = () => {
       const staffToSave = {
         ...selectedStaff,
         overallScore: 10,
-        overallGrade: 'SSS+'
+        overallGrade: 'SSS+' as LetterGrade
       };
       
       updateStaffMember(staffToSave);
@@ -177,7 +177,7 @@ const AdminPage: React.FC = () => {
     // Special handling for Managers and Owners
     if (newStaffData.role === 'Manager' || newStaffData.role === 'Owner') {
       newStaffData.overallScore = 10;
-      newStaffData.overallGrade = 'SSS+';
+      newStaffData.overallGrade = 'SSS+' as LetterGrade;
     }
     
     await addStaffMember(newStaffData);

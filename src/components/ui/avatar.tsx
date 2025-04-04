@@ -11,7 +11,7 @@ const Avatar = React.forwardRef<
   <AvatarPrimitive.Root
     ref={ref}
     className={cn(
-      "relative flex h-10 w-10 shrink-0 overflow-hidden rounded-md", // Changed from rounded-full to rounded-md
+      "relative flex h-10 w-10 shrink-0 overflow-hidden rounded-md", // Already using rounded-md (square with slightly rounded corners)
       className
     )}
     {...props}
@@ -38,7 +38,7 @@ const AvatarFallback = React.forwardRef<
   <AvatarPrimitive.Fallback
     ref={ref}
     className={cn(
-      "flex h-full w-full items-center justify-center rounded-md bg-muted", // Changed from rounded-full to rounded-md
+      "flex h-full w-full items-center justify-center rounded-md bg-muted", // Already using rounded-md (square with slightly rounded corners)
       className
     )}
     {...props}

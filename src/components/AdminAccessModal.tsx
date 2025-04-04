@@ -1,104 +1,163 @@
 
-import React, { useState } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
-import { toast } from "@/hooks/use-toast";
+import React, { useState, useEffect } from 'react';
 import { 
   Dialog, 
   DialogContent, 
   DialogHeader, 
-  DialogTitle, 
-  DialogDescription 
+  DialogTitle,
+  DialogDescription,
+  DialogFooter
 } from "@/components/ui/dialog";
-import { Lock } from 'lucide-react';
+import { toast } from '@/hooks/use-toast';
+import { Lock, X } from 'lucide-react';
 
 interface AdminAccessModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  onFailure: () => void;
 }
 
-const AdminAccessModal: React.FC<AdminAccessModalProps> = ({ isOpen, onClose, onSuccess }) => {
+const AdminAccessModal: React.FC<AdminAccessModalProps> = ({ 
+  isOpen, 
+  onClose, 
+  onSuccess,
+  onFailure
+}) => {
   const [accessCode, setAccessCode] = useState('');
-  const [isValidating, setIsValidating] = useState(false);
-  const { login } = useAuth();
+  const [attempts, setAttempts] = useState(0);
+  const [isLocked, setIsLocked] = useState(false);
+  const [countdown, setCountdown] = useState(0);
   
-  const handleLogin = (e: React.FormEvent) => {
+  const CORRECT_CODE = 'APV09';
+  const MAX_ATTEMPTS = 3;
+  const LOCKOUT_TIME = 60; // seconds
+  
+  // Reset attempts when the modal is opened
+  useEffect(() => {
+    if (isOpen) {
+      // Don't reset attempts or countdown if we're currently in a lockout
+      if (!isLocked) {
+        setAccessCode('');
+      }
+    }
+  }, [isOpen, isLocked]);
+  
+  // Countdown timer for locked state
+  useEffect(() => {
+    let timer: number | undefined;
+    
+    if (isLocked && countdown > 0) {
+      timer = window.setInterval(() => {
+        setCountdown(prev => prev - 1);
+      }, 1000);
+    } else if (isLocked && countdown === 0) {
+      setIsLocked(false);
+      setAttempts(0);
+    }
+    
+    return () => {
+      if (timer) clearInterval(timer);
+    };
+  }, [isLocked, countdown]);
+  
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setIsValidating(true);
-
-    // Simulate network delay for dramatic effect
-    setTimeout(() => {
-      const success = login(accessCode);
-      if (success) {
+    
+    if (isLocked) return;
+    
+    if (accessCode === CORRECT_CODE) {
+      toast({
+        title: "Access Granted",
+        description: "Admin access approved for this session.",
+      });
+      onSuccess();
+    } else {
+      const newAttempts = attempts + 1;
+      setAttempts(newAttempts);
+      
+      if (newAttempts >= MAX_ATTEMPTS) {
+        setIsLocked(true);
+        setCountdown(LOCKOUT_TIME);
         toast({
-          title: "Access Granted",
-          description: "Administrator privileges activated."
+          title: "Access Locked",
+          description: `Too many incorrect attempts. Try again in ${LOCKOUT_TIME} seconds.`,
+          variant: "destructive",
         });
-        onSuccess();
       } else {
         toast({
           title: "Access Denied",
-          description: "Invalid access code. Please try again.",
-          variant: "destructive"
+          description: `Incorrect code. ${MAX_ATTEMPTS - newAttempts} attempts remaining.`,
+          variant: "destructive",
         });
       }
-      setIsValidating(false);
-    }, 800);
+      
+      setAccessCode('');
+    }
+  };
+  
+  const handleCancel = () => {
+    onFailure();
+    onClose();
   };
   
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="bg-cyber-darkblue border border-cyber-cyan shadow-[0_0_15px_rgba(0,255,255,0.5)] max-w-md">
+    <Dialog open={isOpen} onOpenChange={handleCancel}>
+      <DialogContent className="bg-cyber-darkblue border border-cyber-cyan shadow-[0_0_15px_rgba(0,255,255,0.5)] max-w-sm">
         <DialogHeader>
-          <DialogTitle className="text-center">
-            <div className="flex items-center justify-center gap-2 mb-2">
-              <Lock className="text-cyber-cyan h-5 w-5" />
-              <span className="font-digital text-xl cyber-text-glow text-cyber-cyan">ADMIN ACCESS REQUIRED</span>
-            </div>
+          <DialogTitle className="text-center flex items-center justify-center gap-2">
+            <Lock className="text-cyber-cyan" size={20} />
+            <span className="font-digital text-xl cyber-text-glow text-cyber-cyan">ADMIN ACCESS REQUIRED</span>
           </DialogTitle>
-          <DialogDescription className="text-center text-white/70 font-cyber text-sm">
-            SECURE AUTHENTICATION REQUIRED
+          <DialogDescription className="text-center text-cyber-cyan/70">
+            Enter the admin access code to continue
           </DialogDescription>
         </DialogHeader>
         
-        <form onSubmit={handleLogin} className="space-y-6">
-          <div className="space-y-2">
-            <label className="block text-sm font-cyber text-cyber-cyan">
-              ACCESS CODE
-            </label>
-            <div className="relative">
-              <input 
-                type="password" 
-                value={accessCode} 
-                onChange={e => setAccessCode(e.target.value)} 
-                className="w-full bg-cyber-black border border-cyber-cyan rounded px-4 py-3 text-white font-mono focus:outline-none focus:ring-2 focus:ring-cyber-cyan" 
-                placeholder="Enter access code..." 
-                required 
-                autoFocus
-              />
-              <div className="absolute right-0 top-0 h-full w-12 flex items-center justify-center">
-                <div className={`w-2 h-2 rounded-full ${accessCode ? 'bg-cyber-cyan animate-pulse-glow' : 'bg-gray-500'}`}></div>
-              </div>
-            </div>
-          </div>
+        <form onSubmit={handleSubmit} className="space-y-4 pt-2">
+          <div>
+            <input
+              type="password"
+              value={accessCode}
+              onChange={(e) => setAccessCode(e.target.value)}
+              className="w-full bg-cyber-black border border-cyber-cyan rounded px-4 py-2 text-white font-mono focus:outline-none focus:ring-2 focus:ring-cyber-cyan"
+              placeholder="Enter access code"
+              disabled={isLocked}
+              autoFocus
+            />
             
-          <button 
-            type="submit" 
-            disabled={isValidating} 
-            className="cyber-button w-full rounded"
-          >
-            {isValidating ? (
-              <span className="flex items-center justify-center">
-                <span className="mr-2">VALIDATING</span>
-                <div className="h-4 w-4 border-2 border-cyber-cyan border-t-transparent rounded-full animate-spin"></div>
-              </span>
-            ) : 'ACCESS SYSTEM'}
-          </button>
+            {isLocked && (
+              <p className="text-red-400 text-sm mt-2">
+                Access locked for {countdown} seconds
+              </p>
+            )}
+            
+            {!isLocked && attempts > 0 && (
+              <p className="text-yellow-400 text-sm mt-2">
+                Attempts remaining: {MAX_ATTEMPTS - attempts}
+              </p>
+            )}
+          </div>
+          
+          <DialogFooter className="flex gap-4 justify-between sm:justify-between">
+            <button 
+              type="button" 
+              onClick={handleCancel}
+              className="flex items-center gap-1 px-4 py-2 text-white hover:text-red-300 font-cyber border border-red-500/50 rounded hover:border-red-500 transition-all"
+            >
+              <X size={16} />
+              Cancel
+            </button>
+            
+            <button
+              type="submit"
+              disabled={isLocked}
+              className={`cyber-button rounded px-4 py-2 ${isLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >
+              Submit
+            </button>
+          </DialogFooter>
         </form>
-        
-        <div className="mt-6 text-xs text-center text-cyber-cyan/60 font-cyber">
-          <p>SECURITY PROTOCOL ACTIVE</p>
-        </div>
       </DialogContent>
     </Dialog>
   );

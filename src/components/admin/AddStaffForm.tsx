@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { StaffMember, StaffRole, LetterGrade } from '@/types/staff';
 import { 
@@ -63,8 +62,11 @@ const AddStaffForm: React.FC<AddStaffFormProps> = ({ isOpen, onClose, onAddStaff
       form.setValue('rank', 'Trial Mod');
     } else if (currentRole === 'Builder') {
       form.setValue('rank', 'Trial Builder');
-    } else if (currentRole === 'Manager' || currentRole === 'Owner') {
+    } else if (currentRole === 'Manager') {
       form.setValue('rank', 'Manager');
+    } else if (currentRole === 'Owner') {
+      // Lock rank to "Owner" for Owner role
+      form.setValue('rank', 'Owner');
     }
   }, [currentRole, form]);
   
@@ -182,6 +184,11 @@ const AddStaffForm: React.FC<AddStaffFormProps> = ({ isOpen, onClose, onAddStaff
       const overallScore = values.role === 'Manager' || values.role === 'Owner' ? 10 : 7;
       const overallGrade = values.role === 'Manager' || values.role === 'Owner' ? 'SSS+' as LetterGrade : 'B' as LetterGrade;
       
+      // For Owner role, enforce "Owner" rank
+      if (values.role === 'Owner') {
+        values.rank = 'Owner';
+      }
+      
       // Create the new staff member object
       const newStaffData: Omit<StaffMember, 'id'> = {
         name: values.name,
@@ -240,6 +247,9 @@ const AddStaffForm: React.FC<AddStaffFormProps> = ({ isOpen, onClose, onAddStaff
       });
     }
   }, [isOpen, form]);
+  
+  // Determine if rank field should be disabled (locked)
+  const isRankLocked = currentRole === 'Owner';
   
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -314,9 +324,10 @@ const AddStaffForm: React.FC<AddStaffFormProps> = ({ isOpen, onClose, onAddStaff
                   <Select
                     onValueChange={field.onChange}
                     defaultValue={field.value}
+                    disabled={isRankLocked}
                   >
                     <FormControl>
-                      <SelectTrigger className="w-full bg-cyber-black border border-cyber-cyan rounded px-4 py-2 text-white font-mono focus:outline-none focus:ring-2 focus:ring-cyber-cyan">
+                      <SelectTrigger className={`w-full bg-cyber-black border border-cyber-cyan rounded px-4 py-2 text-white font-mono focus:outline-none focus:ring-2 focus:ring-cyber-cyan ${isRankLocked ? 'opacity-70' : ''}`}>
                         <SelectValue placeholder="Select rank" />
                       </SelectTrigger>
                     </FormControl>
@@ -338,11 +349,20 @@ const AddStaffForm: React.FC<AddStaffFormProps> = ({ isOpen, onClose, onAddStaff
                         </>
                       )}
                       
-                      {(currentRole === 'Manager' || currentRole === 'Owner') && (
+                      {currentRole === 'Manager' && (
                         <SelectItem value="Manager">Manager</SelectItem>
+                      )}
+                      
+                      {currentRole === 'Owner' && (
+                        <SelectItem value="Owner">Owner</SelectItem>
                       )}
                     </SelectContent>
                   </Select>
+                  {isRankLocked && (
+                    <p className="text-xs text-red-400 mt-1">
+                      Owner rank cannot be changed
+                    </p>
+                  )}
                 </FormItem>
               )}
             />

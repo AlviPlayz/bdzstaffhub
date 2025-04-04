@@ -116,53 +116,77 @@ const StaffMetricsEditor: React.FC<StaffMetricsEditorProps> = ({
   
   // Handle rank change
   const handleRankChange = (newRank: string) => {
+    if (isOwner) return; // Prevent rank change for Owners
     setRank(newRank);
     selectedStaff.rank = newRank;
+  };
+  
+  // Decide if we should show remove button for Owners (with extra warning)
+  const handleRemoveStaffClick = () => {
+    if (isOwner) {
+      const confirmDelete = window.confirm("Are you sure? This will remove the top-level Owner privileges and glow from this profile.");
+      if (confirmDelete) {
+        onRemoveStaff();
+      }
+    } else {
+      onRemoveStaff();
+    }
   };
   
   return (
     <div className="col-span-2">
       <div className="cyber-panel h-[600px] overflow-y-auto">
         <div className="flex items-center gap-4 mb-6">
-          <div className={`w-16 h-16 rounded-md overflow-hidden cyber-border ${isOwner ? 'shadow-[0_0_12px_rgba(255,0,0,0.7)]' : ''}`}> {/* Changed from rounded-full to rounded-md */}
-            <Avatar className="w-full h-full">
-              <AvatarImage 
-                src={getAvatarUrl(selectedStaff.avatar)} 
-                alt={selectedStaff.name}
-                className="w-full h-full object-cover"
-                onError={() => {
-                  console.error('Image failed to load:', selectedStaff.avatar);
-                  setImageError(true);
-                }}
-              />
-              <AvatarFallback className="bg-cyber-darkpurple text-cyber-cyan">
-                {getInitials(selectedStaff.name)}
-              </AvatarFallback>
-            </Avatar>
+          <div className="relative">
+            {isOwner && (
+              <div className="absolute -top-5 left-1/2 transform -translate-x-1/2 text-amber-400 animate-pulse z-10" title="Owner">
+                👑
+              </div>
+            )}
+            <div className={`w-16 h-16 rounded-md overflow-hidden cyber-border ${isOwner ? 'shadow-[0_0_12px_rgba(255,0,0,0.7)]' : ''}`}>
+              <Avatar className="w-full h-full">
+                <AvatarImage 
+                  src={getAvatarUrl(selectedStaff.avatar)} 
+                  alt={selectedStaff.name}
+                  className="w-full h-full object-cover"
+                  onError={() => {
+                    console.error('Image failed to load:', selectedStaff.avatar);
+                    setImageError(true);
+                  }}
+                />
+                <AvatarFallback className="bg-cyber-darkpurple text-cyber-cyan">
+                  {getInitials(selectedStaff.name)}
+                </AvatarFallback>
+              </Avatar>
+            </div>
           </div>
           <div>
             <div className="flex items-center">
-              {isOwner && (
-                <span className="text-amber-400 mr-1" title="Owner">👑</span>
-              )}
               <h2 className="text-2xl cyber-text-glow font-digital text-white">{selectedStaff.name}</h2>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-cyber-cyan">{selectedStaff.role}</span>
-              <div className="w-full max-w-xs">
-                <Select 
-                  value={rank}
-                  onValueChange={handleRankChange}
-                  defaultValue={rank || undefined}
-                >
-                  <SelectTrigger className="bg-cyber-black border border-cyber-cyan/40 text-white h-7 text-xs py-0">
-                    <SelectValue placeholder="Select rank" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-cyber-black border border-cyber-cyan text-white">
-                    {getRankOptions()}
-                  </SelectContent>
-                </Select>
-              </div>
+              <span className={`${isOwner ? 'text-red-500 font-bold' : 'text-cyber-cyan'}`}>
+                {selectedStaff.role}
+              </span>
+              {isOwner ? (
+                <div className="text-red-400 ml-2">Owner</div>
+              ) : (
+                <div className="w-full max-w-xs">
+                  <Select 
+                    value={rank}
+                    onValueChange={handleRankChange}
+                    defaultValue={rank || undefined}
+                    disabled={isOwner} // Disable select for Owners
+                  >
+                    <SelectTrigger className="bg-cyber-black border border-cyber-cyan/40 text-white h-7 text-xs py-0">
+                      <SelectValue placeholder="Select rank" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-cyber-black border border-cyber-cyan text-white">
+                      {getRankOptions()}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -204,7 +228,7 @@ const StaffMetricsEditor: React.FC<StaffMetricsEditorProps> = ({
         
         <div className="flex gap-4 justify-between">
           <button 
-            onClick={onRemoveStaff}
+            onClick={handleRemoveStaffClick}
             className="cyber-button-danger"
           >
             Remove Staff

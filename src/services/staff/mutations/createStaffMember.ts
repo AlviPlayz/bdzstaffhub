@@ -17,9 +17,15 @@ export const createStaffMember = async (data: Omit<StaffMember, 'id'>) => {
         staffData.rank = 'Trial Mod';
       } else if (staffData.role === 'Builder') {
         staffData.rank = 'Trial Builder';
-      } else if (staffData.role === 'Manager' || staffData.role === 'Owner') {
+      } else if (staffData.role === 'Manager') {
         staffData.rank = 'Manager';
+      } else if (staffData.role === 'Owner') {
+        // Ensure Owner always has the correct rank
+        staffData.rank = 'Owner';
       }
+    } else if (staffData.role === 'Owner') {
+      // Force Owner rank for Owner role regardless of what was provided
+      staffData.rank = 'Owner';
     }
     
     // For Managers and Owners, ensure they have proper metrics

@@ -75,10 +75,12 @@ const StaffList: React.FC<StaffListProps> = ({
     return staff.role === 'Owner';
   };
   
-  // Sort staff so Owners always appear at the top
+  // Sort staff so Owners always appear at the top, followed by Managers, then others
   const sortedStaff = [...filteredStaff].sort((a, b) => {
     if (a.role === 'Owner' && b.role !== 'Owner') return -1;
     if (a.role !== 'Owner' && b.role === 'Owner') return 1;
+    if (a.role === 'Manager' && b.role !== 'Manager' && b.role !== 'Owner') return -1;
+    if (a.role !== 'Manager' && a.role !== 'Owner' && b.role === 'Manager') return 1;
     return 0;
   });
   
@@ -93,38 +95,55 @@ const StaffList: React.FC<StaffListProps> = ({
               onClick={() => onStaffSelect(staff)}
               className={`flex items-center p-3 rounded transition-all cursor-pointer
                 ${selectedStaff?.id === staff.id 
-                  ? 'bg-cyber-cyan/20 border border-cyber-cyan' 
-                  : 'hover:bg-cyber-darkpurple'}`}
+                  ? isOwner(staff) 
+                    ? 'bg-red-500/20 border border-red-500' 
+                    : 'bg-cyber-cyan/20 border border-cyber-cyan' 
+                  : isOwner(staff)
+                    ? 'hover:bg-red-500/10 border border-red-500/40'
+                    : 'hover:bg-cyber-darkpurple'
+                }`}
             >
-              <div className="w-10 h-10 rounded-md overflow-hidden mr-3"> {/* Changed from rounded-full to rounded-md */}
-                <Avatar className={`w-full h-full ${isOwner(staff) ? 'shadow-[0_0_10px_rgba(255,0,0,0.7)]' : ''}`}>
-                  <AvatarImage 
-                    src={getAvatarUrl(staff.avatar)} 
-                    alt={staff.name} 
-                    className="w-full h-full object-cover"
-                    onError={(e) => {
-                      // Fallback to placeholder if image fails to load
-                      (e.target as HTMLImageElement).src = '/placeholder.svg';
-                    }}
-                  />
-                  <AvatarFallback className="bg-cyber-darkpurple text-cyber-cyan">
-                    {getInitials(staff.name)}
-                  </AvatarFallback>
-                </Avatar>
+              <div className="relative">
+                {isOwner(staff) && (
+                  <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 text-amber-400 animate-pulse z-10" title="Owner">
+                    👑
+                  </div>
+                )}
+                <div className={`w-10 h-10 rounded-md overflow-hidden mr-3 ${isOwner(staff) ? 'shadow-[0_0_10px_rgba(255,0,0,0.7)]' : ''}`}>
+                  <Avatar className="w-full h-full">
+                    <AvatarImage 
+                      src={getAvatarUrl(staff.avatar)} 
+                      alt={staff.name} 
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        // Fallback to placeholder if image fails to load
+                        (e.target as HTMLImageElement).src = '/placeholder.svg';
+                      }}
+                    />
+                    <AvatarFallback className="bg-cyber-darkpurple text-cyber-cyan">
+                      {getInitials(staff.name)}
+                    </AvatarFallback>
+                  </Avatar>
+                </div>
               </div>
               <div className="flex-1">
                 <div className="flex items-center">
-                  {isOwner(staff) && (
-                    <span className="text-amber-400 mr-1" title="Owner">👑</span>
-                  )}
                   <h3 className="text-white font-cyber">{staff.name}</h3>
                 </div>
                 <div className="flex justify-between items-center">
                   <div>
-                    <p className="text-cyber-cyan text-sm">{getStaffRoleLabel(staff.role)}</p>
-                    {staff.rank && <p className="text-cyber-yellow text-xs">{staff.rank}</p>}
+                    <p className={`text-sm ${isOwner(staff) ? 'text-red-500 font-bold' : 'text-cyber-cyan'}`}>
+                      {getStaffRoleLabel(staff.role)}
+                    </p>
+                    {staff.rank && (
+                      <p className={`text-xs ${isOwner(staff) ? 'text-red-400' : 'text-cyber-yellow'}`}>
+                        {staff.rank}
+                      </p>
+                    )}
                   </div>
-                  <p className={`text-sm text-white ${getLetterGradeClassName(staff.overallGrade)}`}>{staff.overallGrade}</p>
+                  <p className={`text-sm text-white ${getLetterGradeClassName(staff.overallGrade)}`}>
+                    {staff.overallGrade}
+                  </p>
                 </div>
               </div>
             </div>

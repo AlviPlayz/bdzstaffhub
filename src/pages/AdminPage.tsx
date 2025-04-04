@@ -30,14 +30,26 @@ const AdminPage: React.FC = () => {
   const [filterRole, setFilterRole] = useState<StaffRole | 'All'>('All');
   const [sortBy, setSortBy] = useState<'name' | 'role' | 'score'>('name');
   const [sortAsc, setSortAsc] = useState(true);
-  const [showAdminAccessModal, setShowAdminAccessModal] = useState(!isAdmin);
+  const [hasAdminAccess, setHasAdminAccess] = useState(false);
+  const [showAdminAccessModal, setShowAdminAccessModal] = useState(true);
   
-  // Redirect non-admin users back to the homepage if they close the modal
+  // Check for admin access on initial load using sessionStorage
   useEffect(() => {
-    if (!isAdmin && !showAdminAccessModal) {
+    const adminAccess = sessionStorage.getItem('adminAccess') === 'true';
+    setHasAdminAccess(adminAccess);
+    
+    // If they already have access, don't show the login modal
+    if (adminAccess) {
+      setShowAdminAccessModal(false);
+    }
+  }, []);
+  
+  // Redirect non-admin users back to the homepage if they close the modal without entering code
+  useEffect(() => {
+    if (!hasAdminAccess && !showAdminAccessModal) {
       navigate('/');
     }
-  }, [isAdmin, navigate, showAdminAccessModal]);
+  }, [hasAdminAccess, navigate, showAdminAccessModal]);
   
   // Filter and sort staff based on criteria
   useEffect(() => {
@@ -62,6 +74,10 @@ const AdminPage: React.FC = () => {
       if (a.role === 'Owner' && b.role !== 'Owner') return -1;
       if (a.role !== 'Owner' && b.role === 'Owner') return 1;
       
+      // Then sort Managers next if not already sorted by role
+      if (a.role === 'Manager' && b.role !== 'Manager' && b.role !== 'Owner') return -1;
+      if (a.role !== 'Manager' && a.role !== 'Owner' && b.role === 'Manager') return 1;
+      
       // Then apply the regular sorting
       if (sortBy === 'name') {
         return sortAsc 
@@ -72,7 +88,7 @@ const AdminPage: React.FC = () => {
           ? a.role.localeCompare(b.role) 
           : b.role.localeCompare(a.role);
       } else {
-        // For manager, always put them at top or bottom depending on sort direction
+        // For managers, always put them at top or bottom depending on sort direction
         if (a.role === 'Manager' && b.role !== 'Owner' && b.role !== 'Manager') {
           return sortAsc ? 1 : -1;
         }
@@ -142,6 +158,11 @@ const AdminPage: React.FC = () => {
         overallGrade: 'SSS+' as LetterGrade
       };
       
+      // For Owner, ensure rank is always "Owner"
+      if (selectedStaff.role === 'Owner') {
+        staffToSave.rank = 'Owner';
+      }
+      
       updateStaffMember(staffToSave);
       toast({
         title: "Changes Saved",
@@ -186,6 +207,11 @@ const AdminPage: React.FC = () => {
       newStaffData.overallGrade = 'SSS+' as LetterGrade;
     }
     
+    // For Owner role, ensure rank is "Owner"
+    if (newStaffData.role === 'Owner') {
+      newStaffData.rank = 'Owner';
+    }
+    
     await addStaffMember(newStaffData);
     
     toast({
@@ -207,27 +233,63 @@ const AdminPage: React.FC = () => {
     });
   };
   
-  const handleAdminAccess = () => {
+  const handleAdminAccess = (accessGranted: boolean) => {
+    setHasAdminAccess(accessGranted);
     setShowAdminAccessModal(false);
+    
+    if (accessGranted) {
+      // Store the access flag in sessionStorage (cleared on tab close/refresh)
+      sessionStorage.setItem('adminAccess', 'true');
+      toast({
+        title: "Access Granted",
+        description: "You now have admin access for this session.",
+      });
+    } else {
+      // If access denied, navigate back to home
+      navigate('/');
+    }
+  };
+  
+  const handleLogout = () => {
+    // Clear admin access
+    sessionStorage.removeItem('adminAccess');
+    setHasAdminAccess(false);
+    
+    // Navigate back to home
+    navigate('/');
+    
+    toast({
+      title: "Logged Out",
+      description: "You have been logged out of the admin panel.",
+    });
   };
   
   if (loading) {
     return <LoadingState message="Loading admin panel..." />;
   }
   
-  if (!isAdmin) {
+  if (!hasAdminAccess) {
     return (
       <AdminAccessModal 
         isOpen={showAdminAccessModal} 
         onClose={() => setShowAdminAccessModal(false)}
-        onSuccess={handleAdminAccess}
+        onSuccess={() => handleAdminAccess(true)}
+        onFailure={() => handleAdminAccess(false)}
       />
     );
   }
   
   return (
     <div className="container mx-auto p-4 min-h-screen">
-      <h1 className="text-3xl cyber-text-glow font-digital text-white mb-6">Administrator Panel</h1>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl cyber-text-glow font-digital text-white">Administrator Panel</h1>
+        <button 
+          onClick={handleLogout}
+          className="cyber-button-danger py-1 px-3 text-sm"
+        >
+          Logout
+        </button>
+      </div>
       
       {/* Admin Tools */}
       <AdminToolbar 

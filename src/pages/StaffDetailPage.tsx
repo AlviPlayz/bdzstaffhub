@@ -64,11 +64,15 @@ const StaffDetailPage: React.FC = () => {
     }
     
     // Add a timestamp to bust cache
-    const url = new URL(avatarUrl);
-    if (!url.searchParams.has('t')) {
-      url.searchParams.set('t', Date.now().toString());
+    try {
+      const url = new URL(avatarUrl);
+      if (!url.searchParams.has('t')) {
+        url.searchParams.set('t', Date.now().toString());
+      }
+      return url.toString();
+    } catch (e) {
+      return avatarUrl;
     }
-    return url.toString();
   };
 
   if (loading) {
@@ -93,6 +97,9 @@ const StaffDetailPage: React.FC = () => {
     );
   }
 
+  // Check if the staff is an Owner for special styling
+  const isOwner = staff.role === 'Owner';
+
   return (
     <div className="container mx-auto p-4 min-h-screen">
       <button 
@@ -108,10 +115,15 @@ const StaffDetailPage: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div>
           {/* Staff basic info */}
-          <div className="cyber-panel mb-6">
+          <div className={`cyber-panel mb-6 ${isOwner ? 'border-red-500 shadow-[0_0_15px_rgba(255,0,0,0.7)]' : ''}`}>
             <div className="flex items-center gap-4 mb-4">
               <div className="relative">
-                <div className="w-20 h-20 rounded-full overflow-hidden cyber-border">
+                {isOwner && (
+                  <div className="absolute -top-5 left-1/2 transform -translate-x-1/2 text-amber-400 animate-pulse z-10" title="Owner">
+                    👑
+                  </div>
+                )}
+                <div className={`w-20 h-20 rounded-md overflow-hidden cyber-border ${isOwner ? 'shadow-[0_0_10px_rgba(255,0,0,0.7)]' : ''}`}>
                   <Avatar className="w-full h-full">
                     <AvatarImage 
                       src={getAvatarUrl(staff.avatar)}
@@ -128,19 +140,19 @@ const StaffDetailPage: React.FC = () => {
               <div>
                 <h2 className="text-2xl font-digital text-white">{staff.name}</h2>
                 <div className="flex items-center gap-2">
-                  <p className="text-cyber-cyan">{staff.role}</p>
-                  {staff.rank && <span className="text-cyber-yellow text-sm">({staff.rank})</span>}
+                  <p className={`${isOwner ? 'text-red-500 font-bold' : 'text-cyber-cyan'}`}>{staff.role}</p>
+                  {staff.rank && <span className={`text-sm ${isOwner ? 'text-red-400' : 'text-cyber-yellow'}`}>({staff.rank})</span>}
                 </div>
                 <div className="mt-2 flex items-center">
                   <span className="mr-2">Overall Grade:</span>
-                  <span className={`letter-grade text-lg ${staff.role === 'Manager' || staff.role === 'Owner' ? 'grade-sss' : ''}`}>
-                    {staff.role === 'Manager' || staff.role === 'Owner' ? 'SSS+' : staff.overallGrade}
+                  <span className={`letter-grade text-lg ${isOwner ? 'grade-sss' : ''}`}>
+                    {isOwner ? 'SSS+' : staff.overallGrade}
                   </span>
                 </div>
                 <div className="mt-1">
                   <span className="mr-2">Score:</span>
                   <span className="text-cyber-cyan font-bold">
-                    {staff.role === 'Manager' || staff.role === 'Owner' ? 'Immeasurable' : staff.overallScore.toFixed(1)}
+                    {isOwner ? 'Immeasurable' : staff.overallScore.toFixed(1)}
                   </span>
                 </div>
               </div>

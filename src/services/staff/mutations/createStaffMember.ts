@@ -12,20 +12,17 @@ export const createStaffMember = async (data: Omit<StaffMember, 'id'>) => {
     // Set default rank based on role if not provided
     let staffData = { ...data } as StaffMember;
     
-    if (!staffData.rank) {
+    // Force Owner rank for Owner role regardless of what was provided
+    if (staffData.role === 'Owner') {
+      staffData.rank = 'Owner';
+    } else if (!staffData.rank) {
       if (staffData.role === 'Moderator') {
         staffData.rank = 'Trial Mod';
       } else if (staffData.role === 'Builder') {
         staffData.rank = 'Trial Builder';
       } else if (staffData.role === 'Manager') {
         staffData.rank = 'Manager';
-      } else if (staffData.role === 'Owner') {
-        // Ensure Owner always has the correct rank
-        staffData.rank = 'Owner';
       }
-    } else if (staffData.role === 'Owner') {
-      // Force Owner rank for Owner role regardless of what was provided
-      staffData.rank = 'Owner';
     }
     
     // For Managers and Owners, ensure they have proper metrics
@@ -88,6 +85,11 @@ export const createStaffMember = async (data: Omit<StaffMember, 'id'>) => {
       if (error) throw error;
       result = newStaff?.[0];
     } else if (data.role === 'Manager' || data.role === 'Owner') {
+      // For Owner role, ensure the rank is always "Owner"
+      if (data.role === 'Owner') {
+        dbData.rank = 'Owner';
+      }
+      
       const { data: newStaff, error } = await supabase
         .from('managers')
         .insert([dbData])
@@ -119,6 +121,11 @@ export const createStaffMember = async (data: Omit<StaffMember, 'id'>) => {
     // Make sure the avatar URL is preserved
     if (data.avatar && data.avatar !== '/placeholder.svg') {
       transformedResult.avatar = data.avatar;
+    }
+    
+    // Ensure Owner's rank is preserved in the returned object
+    if (data.role === 'Owner') {
+      transformedResult.rank = 'Owner';
     }
     
     return transformedResult;

@@ -10,6 +10,11 @@ export const updateStaffMember = async (staff: StaffMember) => {
   try {
     console.log(`updateStaffMember: Updating staff member ${staff.id} (${staff.name})`);
     
+    // For Owner role, always ensure rank is "Owner"
+    if (staff.role === 'Owner') {
+      staff.rank = 'Owner';
+    }
+    
     // For Managers and Owners, ensure they have immeasurable metrics
     if (staff.role === 'Manager' || staff.role === 'Owner') {
       // Cast to the proper type based on role
@@ -29,6 +34,11 @@ export const updateStaffMember = async (staff: StaffMember) => {
       console.log("updateStaffMember: Avatar URL set to", staff.avatar);
     }
     
+    // Double-check rank for Owner
+    if (staff.role === 'Owner') {
+      dbData.rank = 'Owner';
+    }
+    
     if (staff.role === 'Moderator') {
       const { error } = await supabase
         .from('moderators')
@@ -42,6 +52,11 @@ export const updateStaffMember = async (staff: StaffMember) => {
         .eq('id', staff.id);
       if (error) throw error;
     } else if (staff.role === 'Manager' || staff.role === 'Owner') {
+      // Ensure Owner rank is preserved in database
+      if (staff.role === 'Owner') {
+        dbData.rank = 'Owner';
+      }
+      
       const { error } = await supabase
         .from('managers')
         .update(dbData)
@@ -51,6 +66,11 @@ export const updateStaffMember = async (staff: StaffMember) => {
     
     // Cleanup previous images for this staff member
     await cleanupPreviousImages(staff.id);
+    
+    // Ensure Owner's rank is preserved in the returned object
+    if (staff.role === 'Owner') {
+      staff.rank = 'Owner';
+    }
     
     return staff; // Return the updated staff member
   } catch (error) {

@@ -1,5 +1,5 @@
 
-import { StaffMember, StaffRole, LetterGrade, ModeratorMetrics, BuilderMetrics, ManagerMetrics, PerformanceMetric } from '@/types/staff';
+import { StaffMember, StaffRole, LetterGrade, ModeratorMetrics, BuilderMetrics, ManagerMetrics } from '@/types/staff';
 import { calculateLetterGrade } from './staffGrading';
 
 // Function to create a performance metric
@@ -113,11 +113,17 @@ export const transformToStaffMember = (row: any, role: StaffRole): StaffMember =
     overallGrade = calculateLetterGrade(overallScore, role);
   }
   
+  // Set default rank or use the one from the database, special case for Owner
+  let rank = row.rank || getDefaultRank(role);
+  if (role === 'Owner') {
+    rank = 'Owner';
+  }
+  
   return {
     id: row.id,
     name: row.name,
     role: role,
-    rank: row.rank || getDefaultRank(role),
+    rank: rank,
     avatar: avatar,
     metrics: metrics,
     overallScore: overallScore,
@@ -149,6 +155,11 @@ export const transformToDatabase = (staff: StaffMember): any => {
     rank: staff.rank || getDefaultRank(staff.role),
     profile_image_url: staff.avatar
   };
+
+  // Force Owner rank for Owner role
+  if (staff.role === 'Owner') {
+    dbObject.rank = 'Owner';
+  }
 
   // Set overall_grade - always SSS+ for Manager/Owner
   dbObject.overall_grade = staff.role === 'Manager' || staff.role === 'Owner' 
@@ -211,6 +222,12 @@ export const transformToDatabase = (staff: StaffMember): any => {
     dbObject.cooperativeness = 10;
     dbObject.creativity = 10;
     dbObject.consistency = 10;
+    
+    // Special handling for Owner role - force rank to be "Owner"
+    if (staff.role === 'Owner') {
+      dbObject.rank = 'Owner';
+    }
+    
     // Add staff_id if not present
     if (!dbObject.staff_id) {
       dbObject.staff_id = `BDZ-${Math.floor(100 + Math.random() * 900)}`;

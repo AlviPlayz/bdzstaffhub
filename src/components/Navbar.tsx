@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -88,12 +89,18 @@ const Navbar: React.FC = () => {
         </div>
       </nav>
 
-      <AdminAccessModal isOpen={showAdminModal} onClose={() => setShowAdminModal(false)} onSuccess={() => {
-      setShowAdminModal(false);
-      window.location.href = '/admin';
-    }} onFailure={() => {
-      console.log('Admin access denied');
-    }} />
+      <AdminAccessModal 
+        isOpen={showAdminModal} 
+        onClose={() => setShowAdminModal(false)} 
+        onSuccess={() => {
+          setShowAdminModal(false);
+          window.location.href = '/admin';
+        }} 
+        onFailure={() => {
+          console.log('Admin access denied');
+          setShowAdminModal(false);
+        }} 
+      />
     </>;
 };
 export default Navbar;

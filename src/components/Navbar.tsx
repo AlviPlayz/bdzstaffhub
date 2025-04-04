@@ -125,6 +125,9 @@ const Navbar: React.FC = () => {
           setShowAdminModal(false);
           window.location.href = '/admin';
         }}
+        onFailure={() => {
+          console.log('Admin access denied');
+        }}
       />
     </>
   );

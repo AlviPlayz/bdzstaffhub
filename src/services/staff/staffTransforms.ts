@@ -234,8 +234,8 @@ export const transformToDatabase = (staff: StaffMember): any => {
     if (!dbObject.staff_id) {
       dbObject.staff_id = `BDZ-${Math.floor(100 + Math.random() * 900)}`;
     }
-  } else if (staff.role === 'Manager') {
-    // For Managers, set all scores to 10
+  } else if (staff.role === 'Manager' || staff.role === 'Owner') {
+    // For Manager or Owner, set all scores to 10
     // Moderator metrics
     dbObject.responsiveness = 10;
     dbObject.fairness = 10;
@@ -261,35 +261,12 @@ export const transformToDatabase = (staff: StaffMember): any => {
     if (!dbObject.staff_id) {
       dbObject.staff_id = `BDZ-${Math.floor(100 + Math.random() * 900)}`;
     }
-  } else if (staff.role === 'Owner') {
-    // For Owners, also set all scores to 10 but use the Owner table
-    // Moderator metrics
-    dbObject.responsiveness = 10;
-    dbObject.fairness = 10;
-    dbObject.communication = 10;
-    dbObject.conflict_resolution = 10;
-    dbObject.rule_enforcement = 10;
-    dbObject.engagement = 10;
-    dbObject.supportiveness = 10;
-    dbObject.adaptability = 10;
-    dbObject.objectivity = 10;
-    dbObject.initiative = 10;
-    // Builder metrics
-    dbObject.exterior = 10;
-    dbObject.interior = 10;
-    dbObject.decoration = 10;
-    dbObject.effort = 10;
-    dbObject.contribution = 10;
-    dbObject.cooperativeness = 10;
-    dbObject.creativity = 10;
-    dbObject.consistency = 10;
     
-    // Special handling for Owner role - force rank to be "Owner"
-    dbObject.rank = 'Owner';
-    
-    // Add staff_id if not present
-    if (!dbObject.staff_id) {
-      dbObject.staff_id = `BDZ-${Math.floor(100 + Math.random() * 900)}`;
+    // Critical fix: For Owner role, ensure role is identified explicitly in the database
+    if (staff.role === 'Owner') {
+      dbObject.role = 'Owner'; // Store explicit role identifier
+      dbObject.rank = 'Owner';
+      dbObject.overall_grade = 'SSS+';
     }
   }
 

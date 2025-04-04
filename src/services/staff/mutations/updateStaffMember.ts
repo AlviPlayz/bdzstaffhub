@@ -8,14 +8,20 @@ import { createImmeasurableMetrics } from '../staffGrading';
 // Function to update an existing staff member
 export const updateStaffMember = async (staff: StaffMember) => {
   try {
-    console.log(`updateStaffMember: Updating staff member ${staff.id} (${staff.name})`);
+    console.log(`updateStaffMember: Updating staff member ${staff.id} (${staff.name}), role: ${staff.role}`);
     
     // Make a copy of the staff object to avoid modifying the original
     const staffToUpdate = { ...staff };
     
-    // For Owner role, always ensure rank is "Owner"
-    if (staffToUpdate.role === 'Owner') {
+    // CRITICAL FIX: Preserve Owner role throughout the update process
+    const isOwner = staffToUpdate.role === 'Owner';
+    
+    // For Owner role, always ensure rank is "Owner" and preserve the role
+    if (isOwner) {
       staffToUpdate.rank = 'Owner';
+      staffToUpdate.overallGrade = 'SSS+';
+      // Double-checking to ensure role is preserved
+      staffToUpdate.role = 'Owner';
     }
     
     // Apply role-specific logic
@@ -23,7 +29,7 @@ export const updateStaffMember = async (staff: StaffMember) => {
       // Cast to the proper type based on role
       staffToUpdate.metrics = createImmeasurableMetrics(staffToUpdate.role) as unknown as ManagerMetrics;
       staffToUpdate.overallGrade = 'Immeasurable';
-    } else if (staffToUpdate.role === 'Owner') {
+    } else if (isOwner) {
       // Cast to the proper type based on role - Owner has special metrics
       staffToUpdate.metrics = createImmeasurableMetrics(staffToUpdate.role) as unknown as OwnerMetrics;
       staffToUpdate.overallGrade = 'SSS+';
@@ -37,10 +43,12 @@ export const updateStaffMember = async (staff: StaffMember) => {
       console.log("updateStaffMember: Avatar URL set to", staffToUpdate.avatar);
     }
     
-    // Double-check rank for Owner
-    if (staffToUpdate.role === 'Owner') {
+    // CRITICAL FIX: Add role field for proper identification in database
+    if (isOwner) {
+      dbData.role = 'Owner'; // Explicit role identifier
       dbData.rank = 'Owner';
       dbData.overall_grade = 'SSS+';
+      console.log("updateStaffMember: Ensuring Owner role is preserved");
     }
     
     if (staffToUpdate.role === 'Moderator') {
@@ -55,13 +63,15 @@ export const updateStaffMember = async (staff: StaffMember) => {
         .update(dbData)
         .eq('id', staffToUpdate.id);
       if (error) throw error;
-    } else if (staffToUpdate.role === 'Manager' || staffToUpdate.role === 'Owner') {
-      // Ensure Owner rank is preserved in database
-      if (staffToUpdate.role === 'Owner') {
+    } else if (staffToUpdate.role === 'Manager' || isOwner) {
+      // CRITICAL FIX: For Owner role, ensure we properly flag it in the database
+      if (isOwner) {
+        dbData.role = 'Owner';
         dbData.rank = 'Owner';
         dbData.overall_grade = 'SSS+';
       }
       
+      // Both Manager and Owner are stored in the managers table
       const { error } = await supabase
         .from('managers')
         .update(dbData)
@@ -72,11 +82,12 @@ export const updateStaffMember = async (staff: StaffMember) => {
     // Cleanup previous images for this staff member
     await cleanupPreviousImages(staffToUpdate.id);
     
-    // Ensure Owner's role and rank are preserved in the returned object
-    if (staffToUpdate.role === 'Owner') {
+    // CRITICAL FIX: Ensure Owner's role is explicitly preserved in the returned object
+    if (isOwner) {
       staffToUpdate.role = 'Owner';
       staffToUpdate.rank = 'Owner';
       staffToUpdate.overallGrade = 'SSS+';
+      console.log("updateStaffMember: Returning staff with Owner role preserved");
     }
     
     return staffToUpdate; // Return the updated staff member

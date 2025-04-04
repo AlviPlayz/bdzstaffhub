@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useStaff } from '@/contexts/StaffContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -51,7 +50,33 @@ const AdminPage: React.FC = () => {
     }
   }, [hasAdminAccess, navigate, showAdminAccessModal]);
   
-  // Filter and sort staff based on criteria
+  // Add a new helper function to determine display in the dashboard
+  const sortStaffWithOwnerFirst = (a: StaffMember, b: StaffMember) => {
+    // Always keep Owner at the top
+    if (a.role === 'Owner' && b.role !== 'Owner') return -1;
+    if (a.role !== 'Owner' && b.role === 'Owner') return 1;
+    
+    // Then sort Managers next if not already sorted by role
+    if (a.role === 'Manager' && b.role !== 'Manager') return -1;
+    if (a.role !== 'Manager' && b.role === 'Manager') return 1;
+    
+    // Then apply regular sorting criteria
+    if (sortBy === 'name') {
+      return sortAsc 
+        ? a.name.localeCompare(b.name) 
+        : b.name.localeCompare(a.name);
+    } else if (sortBy === 'role') {
+      return sortAsc 
+        ? a.role.localeCompare(b.role) 
+        : b.role.localeCompare(a.role);
+    } else {
+      return sortAsc 
+        ? a.overallScore - b.overallScore 
+        : b.overallScore - a.overallScore;
+    }
+  };
+  
+  // Modify the useEffect that filters staff
   useEffect(() => {
     if (loading) return;
     
@@ -64,42 +89,20 @@ const AdminPage: React.FC = () => {
       );
     }
     
-    // Apply role filter
+    // Apply role filter, with special handling for Owner
     if (filterRole !== 'All') {
-      filtered = filtered.filter(staff => staff.role === filterRole);
+      filtered = filtered.filter(staff => {
+        // When filtering for Manager, exclude Owner
+        if (filterRole === 'Manager') {
+          return staff.role === 'Manager';
+        }
+        // Otherwise apply normal filter
+        return staff.role === filterRole;
+      });
     }
     
-    // First sort to ensure Owners are always at the top
-    filtered.sort((a, b) => {
-      if (a.role === 'Owner' && b.role !== 'Owner') return -1;
-      if (a.role !== 'Owner' && b.role === 'Owner') return 1;
-      
-      // Then sort Managers next if not already sorted by role
-      if (a.role === 'Manager' && b.role !== 'Manager' && b.role !== 'Owner') return -1;
-      if (a.role !== 'Manager' && a.role !== 'Owner' && b.role === 'Manager') return 1;
-      
-      // Then apply the regular sorting
-      if (sortBy === 'name') {
-        return sortAsc 
-          ? a.name.localeCompare(b.name) 
-          : b.name.localeCompare(a.name);
-      } else if (sortBy === 'role') {
-        return sortAsc 
-          ? a.role.localeCompare(b.role) 
-          : b.role.localeCompare(a.role);
-      } else {
-        // For managers, always put them at top or bottom depending on sort direction
-        if (a.role === 'Manager' && b.role !== 'Owner' && b.role !== 'Manager') {
-          return sortAsc ? 1 : -1;
-        }
-        if (b.role === 'Manager' && a.role !== 'Owner' && a.role !== 'Manager') {
-          return sortAsc ? -1 : 1;
-        }
-        return sortAsc 
-          ? a.overallScore - b.overallScore 
-          : b.overallScore - a.overallScore;
-      }
-    });
+    // Apply sorting with Owner always at top
+    filtered.sort(sortStaffWithOwnerFirst);
     
     setFilteredStaff(filtered);
   }, [allStaff, searchTerm, filterRole, sortBy, sortAsc, loading]);

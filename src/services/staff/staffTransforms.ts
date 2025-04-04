@@ -5,11 +5,14 @@ import { calculateLetterGrade } from './staffGrading';
 export const createMetric = (name: string, score: number, role?: StaffRole): PerformanceMetric => {
   // For Manager and Owner roles, set special scores
   if (role === 'Manager' || role === 'Owner') {
+    // Special handling for Owner role
+    const letterGrade = role === 'Owner' ? 'SSS+' : 'Immeasurable';
+    
     return {
       id: name.toLowerCase().replace(/\s+/g, '-'),
       name,
       score: 10, // Maximum score for display purposes
-      letterGrade: 'Immeasurable' as LetterGrade
+      letterGrade: letterGrade as LetterGrade
     };
   }
   
@@ -56,8 +59,8 @@ export const transformToStaffMember = (row: any, role: StaffRole): StaffMember =
       creativity: createMetric('Creativity', typeof row.creativity !== 'undefined' ? row.creativity : 0),
       consistency: createMetric('Consistency', typeof row.consistency !== 'undefined' ? row.consistency : 0)
     };
-  } else if (role === 'Manager' || role === 'Owner') {
-    // For Manager and Owner, always set immeasurable scores
+  } else if (role === 'Manager') {
+    // Specialized handling for Manager role
     metrics = {
       // Moderator metrics
       responsiveness: createMetric('Responsiveness', 10, role),
@@ -80,14 +83,42 @@ export const transformToStaffMember = (row: any, role: StaffRole): StaffMember =
       creativity: createMetric('Creativity', 10, role),
       consistency: createMetric('Consistency', 10, role)
     };
+  } else if (role === 'Owner') {
+    // Specialized handling for Owner role (similar metrics but with Owner-specific grades)
+    metrics = {
+      // Moderator metrics with Owner role specific handling
+      responsiveness: createMetric('Responsiveness', 10, role),
+      fairness: createMetric('Fairness', 10, role),
+      communication: createMetric('Communication', 10, role),
+      conflictResolution: createMetric('Conflict Resolution', 10, role),
+      ruleEnforcement: createMetric('Rule Enforcement', 10, role),
+      engagement: createMetric('Engagement', 10, role),
+      supportiveness: createMetric('Supportiveness', 10, role),
+      adaptability: createMetric('Adaptability', 10, role),
+      objectivity: createMetric('Objectivity', 10, role),
+      initiative: createMetric('Initiative', 10, role),
+      // Builder metrics with Owner role specific handling
+      exterior: createMetric('Exterior', 10, role),
+      interior: createMetric('Interior', 10, role),
+      decoration: createMetric('Decoration', 10, role),
+      effort: createMetric('Effort', 10, role),
+      contribution: createMetric('Contribution', 10, role),
+      cooperativeness: createMetric('Cooperativeness', 10, role),
+      creativity: createMetric('Creativity', 10, role),
+      consistency: createMetric('Consistency', 10, role)
+    };
   }
   
-  // Calculate overall score
+  // Calculate overall score and grade
   let overallScore = 0;
   let overallGrade: LetterGrade = 'B';
   
-  if (role === 'Manager' || role === 'Owner') {
-    // Special case for Managers and Owners
+  if (role === 'Manager') {
+    // Manager specific overall grading
+    overallScore = 10;
+    overallGrade = 'Immeasurable';
+  } else if (role === 'Owner') {
+    // Owner specific overall grading - distinct from Manager
     overallScore = 10;
     overallGrade = 'SSS+';
   } else {
@@ -160,10 +191,14 @@ export const transformToDatabase = (staff: StaffMember): any => {
     dbObject.rank = 'Owner';
   }
 
-  // Set overall_grade - always SSS+ for Manager/Owner
-  dbObject.overall_grade = staff.role === 'Manager' || staff.role === 'Owner' 
-    ? 'SSS+' 
-    : staff.overallGrade;
+  // Set overall_grade based on role
+  if (staff.role === 'Owner') {
+    dbObject.overall_grade = 'SSS+';
+  } else if (staff.role === 'Manager') {
+    dbObject.overall_grade = 'Immeasurable';
+  } else {
+    dbObject.overall_grade = staff.overallGrade;
+  }
 
   // Add metrics based on role
   if (staff.role === 'Moderator') {
@@ -199,8 +234,35 @@ export const transformToDatabase = (staff: StaffMember): any => {
     if (!dbObject.staff_id) {
       dbObject.staff_id = `BDZ-${Math.floor(100 + Math.random() * 900)}`;
     }
-  } else if (staff.role === 'Manager' || staff.role === 'Owner') {
-    // For Managers and Owners, set all scores to 10
+  } else if (staff.role === 'Manager') {
+    // For Managers, set all scores to 10
+    // Moderator metrics
+    dbObject.responsiveness = 10;
+    dbObject.fairness = 10;
+    dbObject.communication = 10;
+    dbObject.conflict_resolution = 10;
+    dbObject.rule_enforcement = 10;
+    dbObject.engagement = 10;
+    dbObject.supportiveness = 10;
+    dbObject.adaptability = 10;
+    dbObject.objectivity = 10;
+    dbObject.initiative = 10;
+    // Builder metrics
+    dbObject.exterior = 10;
+    dbObject.interior = 10;
+    dbObject.decoration = 10;
+    dbObject.effort = 10;
+    dbObject.contribution = 10;
+    dbObject.cooperativeness = 10;
+    dbObject.creativity = 10;
+    dbObject.consistency = 10;
+    
+    // Add staff_id if not present
+    if (!dbObject.staff_id) {
+      dbObject.staff_id = `BDZ-${Math.floor(100 + Math.random() * 900)}`;
+    }
+  } else if (staff.role === 'Owner') {
+    // For Owners, also set all scores to 10 but use the Owner table
     // Moderator metrics
     dbObject.responsiveness = 10;
     dbObject.fairness = 10;
@@ -223,9 +285,7 @@ export const transformToDatabase = (staff: StaffMember): any => {
     dbObject.consistency = 10;
     
     // Special handling for Owner role - force rank to be "Owner"
-    if (staff.role === 'Owner') {
-      dbObject.rank = 'Owner';
-    }
+    dbObject.rank = 'Owner';
     
     // Add staff_id if not present
     if (!dbObject.staff_id) {

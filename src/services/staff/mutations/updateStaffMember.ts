@@ -10,69 +10,76 @@ export const updateStaffMember = async (staff: StaffMember) => {
   try {
     console.log(`updateStaffMember: Updating staff member ${staff.id} (${staff.name})`);
     
+    // Make a copy of the staff object to avoid modifying the original
+    const staffToUpdate = { ...staff };
+    
     // For Owner role, always ensure rank is "Owner"
-    if (staff.role === 'Owner') {
-      staff.rank = 'Owner';
+    if (staffToUpdate.role === 'Owner') {
+      staffToUpdate.rank = 'Owner';
     }
     
-    // For Managers and Owners, ensure they have immeasurable metrics
-    if (staff.role === 'Manager' || staff.role === 'Owner') {
+    // Apply role-specific logic
+    if (staffToUpdate.role === 'Manager') {
       // Cast to the proper type based on role
-      if (staff.role === 'Manager') {
-        staff.metrics = createImmeasurableMetrics(staff.role) as unknown as ManagerMetrics;
-      } else {
-        staff.metrics = createImmeasurableMetrics(staff.role) as unknown as OwnerMetrics;
-      }
-      staff.overallGrade = 'SSS+';
+      staffToUpdate.metrics = createImmeasurableMetrics(staffToUpdate.role) as unknown as ManagerMetrics;
+      staffToUpdate.overallGrade = 'Immeasurable';
+    } else if (staffToUpdate.role === 'Owner') {
+      // Cast to the proper type based on role - Owner has special metrics
+      staffToUpdate.metrics = createImmeasurableMetrics(staffToUpdate.role) as unknown as OwnerMetrics;
+      staffToUpdate.overallGrade = 'SSS+';
     }
     
-    const dbData = transformToDatabase(staff);
+    const dbData = transformToDatabase(staffToUpdate);
     
     // Ensure avatar URL is correctly set
-    if (staff.avatar && staff.avatar !== '/placeholder.svg') {
-      dbData.profile_image_url = staff.avatar;
-      console.log("updateStaffMember: Avatar URL set to", staff.avatar);
+    if (staffToUpdate.avatar && staffToUpdate.avatar !== '/placeholder.svg') {
+      dbData.profile_image_url = staffToUpdate.avatar;
+      console.log("updateStaffMember: Avatar URL set to", staffToUpdate.avatar);
     }
     
     // Double-check rank for Owner
-    if (staff.role === 'Owner') {
+    if (staffToUpdate.role === 'Owner') {
       dbData.rank = 'Owner';
+      dbData.overall_grade = 'SSS+';
     }
     
-    if (staff.role === 'Moderator') {
+    if (staffToUpdate.role === 'Moderator') {
       const { error } = await supabase
         .from('moderators')
         .update(dbData)
-        .eq('id', staff.id);
+        .eq('id', staffToUpdate.id);
       if (error) throw error;
-    } else if (staff.role === 'Builder') {
+    } else if (staffToUpdate.role === 'Builder') {
       const { error } = await supabase
         .from('builders')
         .update(dbData)
-        .eq('id', staff.id);
+        .eq('id', staffToUpdate.id);
       if (error) throw error;
-    } else if (staff.role === 'Manager' || staff.role === 'Owner') {
+    } else if (staffToUpdate.role === 'Manager' || staffToUpdate.role === 'Owner') {
       // Ensure Owner rank is preserved in database
-      if (staff.role === 'Owner') {
+      if (staffToUpdate.role === 'Owner') {
         dbData.rank = 'Owner';
+        dbData.overall_grade = 'SSS+';
       }
       
       const { error } = await supabase
         .from('managers')
         .update(dbData)
-        .eq('id', staff.id);
+        .eq('id', staffToUpdate.id);
       if (error) throw error;
     }
     
     // Cleanup previous images for this staff member
-    await cleanupPreviousImages(staff.id);
+    await cleanupPreviousImages(staffToUpdate.id);
     
-    // Ensure Owner's rank is preserved in the returned object
-    if (staff.role === 'Owner') {
-      staff.rank = 'Owner';
+    // Ensure Owner's role and rank are preserved in the returned object
+    if (staffToUpdate.role === 'Owner') {
+      staffToUpdate.role = 'Owner';
+      staffToUpdate.rank = 'Owner';
+      staffToUpdate.overallGrade = 'SSS+';
     }
     
-    return staff; // Return the updated staff member
+    return staffToUpdate; // Return the updated staff member
   } catch (error) {
     console.error('Error updating staff member:', error);
     throw error;

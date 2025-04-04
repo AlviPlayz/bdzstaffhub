@@ -25,7 +25,11 @@ const StaffList: React.FC<StaffListProps> = ({
     }
   };
   
-  const getLetterGradeClassName = (grade: LetterGrade): string => {
+  const getLetterGradeClassName = (grade: LetterGrade, role: StaffRole): string => {
+    // Special case for Owner
+    if (role === 'Owner') return 'text-fuchsia-400';
+    
+    // Regular grades
     switch (grade) {
       case 'S+': return 'text-green-500';
       case 'S': return 'text-green-400';
@@ -38,7 +42,7 @@ const StaffList: React.FC<StaffListProps> = ({
       case 'E': return 'text-red-500';
       case 'E-': return 'text-red-400';
       case 'SSS+': return 'text-fuchsia-400';
-      case 'Immeasurable': return 'text-fuchsia-400';
+      case 'Immeasurable': return 'text-purple-400';
       default: return 'text-gray-400';
     }
   };
@@ -132,7 +136,7 @@ const StaffList: React.FC<StaffListProps> = ({
                 </div>
                 <div className="flex justify-between items-center">
                   <div>
-                    <p className={`text-sm ${isOwner(staff) ? 'text-red-500 font-bold' : 'text-cyber-cyan'}`}>
+                    <p className={`text-sm ${isOwner(staff) ? 'text-red-500 font-bold' : staff.role === 'Manager' ? 'text-purple-400' : 'text-cyber-cyan'}`}>
                       {getStaffRoleLabel(staff.role)}
                     </p>
                     {staff.rank && (
@@ -141,7 +145,7 @@ const StaffList: React.FC<StaffListProps> = ({
                       </p>
                     )}
                   </div>
-                  <p className={`text-sm text-white ${getLetterGradeClassName(staff.overallGrade)}`}>
+                  <p className={`text-sm text-white ${getLetterGradeClassName(staff.overallGrade, staff.role)}`}>
                     {staff.overallGrade}
                   </p>
                 </div>

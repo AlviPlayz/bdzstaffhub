@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { StaffMember, StaffRole } from '@/types/staff';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
@@ -83,7 +82,7 @@ const StaffMetricsEditor: React.FC<StaffMetricsEditorProps> = ({
   };
   
   // Check if the staff is a Manager or Owner
-  const isManagerOrOwner = selectedStaff.role === 'Manager' || selectedStaff.role === 'Owner';
+  const isManager = selectedStaff.role === 'Manager';
   const isOwner = selectedStaff.role === 'Owner';
   
   // Get rank options based on staff role
@@ -133,6 +132,16 @@ const StaffMetricsEditor: React.FC<StaffMetricsEditorProps> = ({
     }
   };
   
+  // Get appropriate grade display text based on role
+  const getGradeDisplayText = (role: StaffRole, letterGrade: string) => {
+    if (role === 'Owner') {
+      return 'SSS+';
+    } else if (role === 'Manager') {
+      return 'Immeasurable';
+    }
+    return letterGrade;
+  };
+  
   return (
     <div className="col-span-2">
       <div className="cyber-panel h-[600px] overflow-y-auto">
@@ -165,7 +174,7 @@ const StaffMetricsEditor: React.FC<StaffMetricsEditorProps> = ({
               <h2 className="text-2xl cyber-text-glow font-digital text-white">{selectedStaff.name}</h2>
             </div>
             <div className="flex items-center gap-2">
-              <span className={`${isOwner ? 'text-red-500 font-bold' : 'text-cyber-cyan'}`}>
+              <span className={`${isOwner ? 'text-red-500 font-bold' : isManager ? 'text-purple-400' : 'text-cyber-cyan'}`}>
                 {selectedStaff.role}
               </span>
               {isOwner ? (
@@ -197,12 +206,15 @@ const StaffMetricsEditor: React.FC<StaffMetricsEditorProps> = ({
           {Object.entries(selectedStaff.metrics).map(([key, metric]) => {
             const gradeColorClass = getGradeColorClass(metric.letterGrade);
             
+            // Display different grade text based on role
+            const gradeDisplayText = getGradeDisplayText(selectedStaff.role, metric.letterGrade);
+            
             return (
               <div key={key} className="space-y-1">
                 <div className="flex justify-between items-center">
                   <label htmlFor={`metric-${key}`} className="text-white">{metric.name}</label>
-                  <span className={`letter-grade text-sm ${gradeColorClass}`}>
-                    {isManagerOrOwner ? 'Immeasurable' : metric.letterGrade}
+                  <span className={`letter-grade text-sm ${isOwner ? 'text-fuchsia-400' : isManager ? 'text-purple-400' : gradeColorClass}`}>
+                    {gradeDisplayText}
                   </span>
                 </div>
                 <div className="flex gap-4 items-center">
@@ -212,13 +224,13 @@ const StaffMetricsEditor: React.FC<StaffMetricsEditorProps> = ({
                     min="0"
                     max="10"
                     step="0.1"
-                    value={isManagerOrOwner ? 10 : metric.score}
-                    onChange={(e) => !isManagerOrOwner && onScoreChange(key, parseFloat(e.target.value))}
+                    value={isOwner || isManager ? 10 : metric.score}
+                    onChange={(e) => !(isOwner || isManager) && onScoreChange(key, parseFloat(e.target.value))}
                     className="w-full cyber-range"
-                    disabled={isManagerOrOwner}
+                    disabled={isOwner || isManager}
                   />
                   <span className="text-cyber-cyan font-mono w-20 text-right">
-                    {isManagerOrOwner ? 'Immeasurable' : metric.score.toFixed(1)}
+                    {isOwner ? 'SSS+' : isManager ? 'Immeasurable' : metric.score.toFixed(1)}
                   </span>
                 </div>
               </div>

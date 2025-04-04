@@ -4,6 +4,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { User, LogOut, BarChart3, Shield, Hammer, Trophy, Home } from 'lucide-react';
 import AdminAccessModal from '@/components/AdminAccessModal';
+
 const Navbar: React.FC = () => {
   const {
     isAuthenticated,
@@ -13,6 +14,7 @@ const Navbar: React.FC = () => {
   const location = useLocation();
   const [showAdminModal, setShowAdminModal] = useState(false);
   const isActive = (path: string) => location.pathname === path;
+  
   const navItems = [{
     path: '/',
     label: 'Dashboard',
@@ -30,13 +32,16 @@ const Navbar: React.FC = () => {
     label: 'Managers',
     icon: <Trophy size={18} />
   }];
+  
   const handleAdminClick = (e: React.MouseEvent) => {
     if (!isAdmin) {
       e.preventDefault();
       setShowAdminModal(true);
     }
   };
+  
   if (!isAuthenticated) return null;
+  
   return <>
       <nav className="bg-cyber-darkblue border-b border-cyber-cyan shadow-lg fixed top-0 left-0 right-0 z-50">
         <div className="container mx-auto px-4">
@@ -103,4 +108,5 @@ const Navbar: React.FC = () => {
       />
     </>;
 };
+
 export default Navbar;

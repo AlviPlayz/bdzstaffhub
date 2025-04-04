@@ -14,6 +14,7 @@ import StaffMetricsEditor from '@/components/admin/StaffMetricsEditor';
 import AdminToolbar from '@/components/admin/AdminToolbar';
 import AddStaffForm from '@/components/admin/AddStaffForm';
 import RemoveStaffDialog from '@/components/admin/RemoveStaffDialog';
+import AdminAccessModal from '@/components/AdminAccessModal';
 
 const AdminPage: React.FC = () => {
   const { isAdmin } = useAuth();
@@ -29,13 +30,14 @@ const AdminPage: React.FC = () => {
   const [filterRole, setFilterRole] = useState<StaffRole | 'All'>('All');
   const [sortBy, setSortBy] = useState<'name' | 'role' | 'score'>('name');
   const [sortAsc, setSortAsc] = useState(true);
+  const [showAdminAccessModal, setShowAdminAccessModal] = useState(!isAdmin);
   
-  // Redirect non-admin users back to the homepage
+  // Redirect non-admin users back to the homepage if they close the modal
   useEffect(() => {
-    if (!isAdmin) {
+    if (!isAdmin && !showAdminAccessModal) {
       navigate('/');
     }
-  }, [isAdmin, navigate]);
+  }, [isAdmin, navigate, showAdminAccessModal]);
   
   // Filter and sort staff based on criteria
   useEffect(() => {
@@ -55,8 +57,12 @@ const AdminPage: React.FC = () => {
       filtered = filtered.filter(staff => staff.role === filterRole);
     }
     
-    // Apply sorting
+    // First sort to ensure Owners are always at the top
     filtered.sort((a, b) => {
+      if (a.role === 'Owner' && b.role !== 'Owner') return -1;
+      if (a.role !== 'Owner' && b.role === 'Owner') return 1;
+      
+      // Then apply the regular sorting
       if (sortBy === 'name') {
         return sortAsc 
           ? a.name.localeCompare(b.name) 
@@ -66,11 +72,11 @@ const AdminPage: React.FC = () => {
           ? a.role.localeCompare(b.role) 
           : b.role.localeCompare(a.role);
       } else {
-        // For manager/owner, always put them at top or bottom depending on sort direction
-        if (a.role === 'Manager' || a.role === 'Owner') {
+        // For manager, always put them at top or bottom depending on sort direction
+        if (a.role === 'Manager' && b.role !== 'Owner' && b.role !== 'Manager') {
           return sortAsc ? 1 : -1;
         }
-        if (b.role === 'Manager' || b.role === 'Owner') {
+        if (b.role === 'Manager' && a.role !== 'Owner' && a.role !== 'Manager') {
           return sortAsc ? -1 : 1;
         }
         return sortAsc 
@@ -201,8 +207,22 @@ const AdminPage: React.FC = () => {
     });
   };
   
+  const handleAdminAccess = () => {
+    setShowAdminAccessModal(false);
+  };
+  
   if (loading) {
     return <LoadingState message="Loading admin panel..." />;
+  }
+  
+  if (!isAdmin) {
+    return (
+      <AdminAccessModal 
+        isOpen={showAdminAccessModal} 
+        onClose={() => setShowAdminAccessModal(false)}
+        onSuccess={handleAdminAccess}
+      />
+    );
   }
   
   return (

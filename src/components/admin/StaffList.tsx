@@ -69,13 +69,25 @@ const StaffList: React.FC<StaffListProps> = ({
       return avatarUrl;
     }
   };
+
+  // Check if staff is owner for special styling
+  const isOwner = (staff: StaffMember): boolean => {
+    return staff.role === 'Owner';
+  };
+  
+  // Sort staff so Owners always appear at the top
+  const sortedStaff = [...filteredStaff].sort((a, b) => {
+    if (a.role === 'Owner' && b.role !== 'Owner') return -1;
+    if (a.role !== 'Owner' && b.role === 'Owner') return 1;
+    return 0;
+  });
   
   return (
     <div className="lg:col-span-1">
       <div className="cyber-panel h-[600px] overflow-y-auto">
         <h2 className="text-lg font-digital text-white mb-4">Staff Members ({filteredStaff.length})</h2>
         <div className="space-y-3">
-          {filteredStaff.map(staff => (
+          {sortedStaff.map(staff => (
             <div 
               key={staff.id}
               onClick={() => onStaffSelect(staff)}
@@ -84,8 +96,8 @@ const StaffList: React.FC<StaffListProps> = ({
                   ? 'bg-cyber-cyan/20 border border-cyber-cyan' 
                   : 'hover:bg-cyber-darkpurple'}`}
             >
-              <div className="w-10 h-10 rounded-full overflow-hidden mr-3">
-                <Avatar className="w-full h-full">
+              <div className="w-10 h-10 rounded-md overflow-hidden mr-3"> {/* Changed from rounded-full to rounded-md */}
+                <Avatar className={`w-full h-full ${isOwner(staff) ? 'shadow-[0_0_10px_rgba(255,0,0,0.7)]' : ''}`}>
                   <AvatarImage 
                     src={getAvatarUrl(staff.avatar)} 
                     alt={staff.name} 
@@ -101,7 +113,12 @@ const StaffList: React.FC<StaffListProps> = ({
                 </Avatar>
               </div>
               <div className="flex-1">
-                <h3 className="text-white font-cyber">{staff.name}</h3>
+                <div className="flex items-center">
+                  {isOwner(staff) && (
+                    <span className="text-amber-400 mr-1" title="Owner">👑</span>
+                  )}
+                  <h3 className="text-white font-cyber">{staff.name}</h3>
+                </div>
                 <div className="flex justify-between items-center">
                   <div>
                     <p className="text-cyber-cyan text-sm">{getStaffRoleLabel(staff.role)}</p>

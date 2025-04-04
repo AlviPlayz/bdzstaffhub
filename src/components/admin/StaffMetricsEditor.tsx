@@ -84,6 +84,7 @@ const StaffMetricsEditor: React.FC<StaffMetricsEditorProps> = ({
   
   // Check if the staff is a Manager or Owner
   const isManagerOrOwner = selectedStaff.role === 'Manager' || selectedStaff.role === 'Owner';
+  const isOwner = selectedStaff.role === 'Owner';
   
   // Get rank options based on staff role
   const getRankOptions = () => {
@@ -106,6 +107,8 @@ const StaffMetricsEditor: React.FC<StaffMetricsEditorProps> = ({
           <SelectItem value="Trial Builder">Trial Builder</SelectItem>
         </>
       );
+    } else if (role === 'Owner') {
+      return <SelectItem value="Owner">Owner</SelectItem>;
     } else {
       return <SelectItem value="Manager">Manager</SelectItem>;
     }
@@ -121,7 +124,7 @@ const StaffMetricsEditor: React.FC<StaffMetricsEditorProps> = ({
     <div className="col-span-2">
       <div className="cyber-panel h-[600px] overflow-y-auto">
         <div className="flex items-center gap-4 mb-6">
-          <div className="w-16 h-16 rounded-full overflow-hidden cyber-border">
+          <div className={`w-16 h-16 rounded-md overflow-hidden cyber-border ${isOwner ? 'shadow-[0_0_12px_rgba(255,0,0,0.7)]' : ''}`}> {/* Changed from rounded-full to rounded-md */}
             <Avatar className="w-full h-full">
               <AvatarImage 
                 src={getAvatarUrl(selectedStaff.avatar)} 
@@ -138,7 +141,12 @@ const StaffMetricsEditor: React.FC<StaffMetricsEditorProps> = ({
             </Avatar>
           </div>
           <div>
-            <h2 className="text-2xl cyber-text-glow font-digital text-white">{selectedStaff.name}</h2>
+            <div className="flex items-center">
+              {isOwner && (
+                <span className="text-amber-400 mr-1" title="Owner">👑</span>
+              )}
+              <h2 className="text-2xl cyber-text-glow font-digital text-white">{selectedStaff.name}</h2>
+            </div>
             <div className="flex items-center gap-2">
               <span className="text-cyber-cyan">{selectedStaff.role}</span>
               <div className="w-full max-w-xs">

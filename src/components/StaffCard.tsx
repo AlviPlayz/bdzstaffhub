@@ -62,7 +62,7 @@ const StaffCard: React.FC<StaffCardProps> = ({ staff, compact = false }) => {
     <div className="cyber-panel rounded-lg transition-all duration-300 hover:scale-[1.02]">
       <div className="flex items-center gap-4">
         <div className="relative">
-          <div className="w-16 h-16 rounded-full overflow-hidden cyber-border">
+          <div className="w-16 h-16 rounded-md overflow-hidden cyber-border"> {/* Changed from rounded-full to rounded-md */}
             <Avatar className="w-full h-full">
               <AvatarImage 
                 src={avatarUrl}

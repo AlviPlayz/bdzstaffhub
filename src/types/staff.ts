@@ -50,3 +50,46 @@ export interface StaffMember {
   overallScore: number;
   overallGrade: LetterGrade;
 }
+
+// Role-specific constants for immutability enforcement
+export const ROLE_CONSTANTS = {
+  OWNER: {
+    ROLE: 'Owner' as const,
+    RANK: 'Owner' as const,
+    GRADE: 'SSS+' as const,
+    TOOLTIP: 'Owner of the Realm' as const
+  },
+  MANAGER: {
+    ROLE: 'Manager' as const,
+    RANK: 'Manager' as const,
+    GRADE: 'Immeasurable' as const
+  }
+};
+
+// Validation function to ensure role/rank integrity
+export const validateRoleRankCombination = (role: StaffRole, rank: string): boolean => {
+  if (role === 'Owner' && rank !== ROLE_CONSTANTS.OWNER.RANK) {
+    return false;
+  }
+  
+  if (role === 'Manager' && rank !== ROLE_CONSTANTS.MANAGER.RANK) {
+    return false;
+  }
+  
+  return true;
+};
+
+// Enforce correct role/rank combinations
+export const enforceRoleRankCombination = (staff: Partial<StaffMember>): Partial<StaffMember> => {
+  const updatedStaff = { ...staff };
+  
+  if (updatedStaff.role === 'Owner') {
+    updatedStaff.rank = ROLE_CONSTANTS.OWNER.RANK;
+    updatedStaff.overallGrade = ROLE_CONSTANTS.OWNER.GRADE;
+  } else if (updatedStaff.role === 'Manager') {
+    updatedStaff.rank = ROLE_CONSTANTS.MANAGER.RANK;
+    updatedStaff.overallGrade = ROLE_CONSTANTS.MANAGER.GRADE;
+  }
+  
+  return updatedStaff;
+};

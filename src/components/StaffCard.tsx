@@ -1,10 +1,11 @@
 
 import React, { useState, useEffect } from 'react';
-import { StaffMember } from '@/types/staff';
+import { StaffMember, ROLE_CONSTANTS } from '@/types/staff';
 import { getGradeColorClass } from '@/utils/gradeUtils';
-import { ArrowUpRight } from 'lucide-react';
+import { ArrowUpRight, Crown } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface StaffCardProps {
   staff: StaffMember;
@@ -16,7 +17,8 @@ const StaffCard: React.FC<StaffCardProps> = ({ staff, compact = false }) => {
   const [imageError, setImageError] = useState(false);
   
   // Check if the staff is an Owner for special styling
-  const isOwner = role === 'Owner';
+  const isOwner = role === ROLE_CONSTANTS.OWNER.ROLE;
+  const isManager = role === ROLE_CONSTANTS.MANAGER.ROLE;
   
   // Extract initials for avatar fallback
   const getInitials = (name: string) => {
@@ -47,30 +49,50 @@ const StaffCard: React.FC<StaffCardProps> = ({ staff, compact = false }) => {
   
   // Special handling for Manager/Owner scores
   const displayScore = React.useMemo(() => {
-    if (role === 'Manager' || role === 'Owner') {
+    if (isOwner || isManager) {
       return 'Immeasurable';
     }
     return overallScore.toFixed(1);
-  }, [role, overallScore]);
+  }, [role, overallScore, isOwner, isManager]);
   
   // Special handling for Manager/Owner grades
   const displayGrade = React.useMemo(() => {
-    if (role === 'Owner') {
-      return 'SSS+';
-    } else if (role === 'Manager') {
-      return 'SSS+';
+    if (isOwner) {
+      return ROLE_CONSTANTS.OWNER.GRADE;
+    } else if (isManager) {
+      return ROLE_CONSTANTS.MANAGER.GRADE;
     }
     return overallGrade;
-  }, [role, overallGrade]);
+  }, [role, overallGrade, isOwner, isManager]);
+  
+  // Card style classes for Owner
+  const cardClasses = React.useMemo(() => {
+    let classes = "cyber-panel rounded-lg transition-all duration-300 hover:scale-[1.02]";
+    
+    if (isOwner) {
+      classes += " border-red-500 shadow-[0_0_15px_rgba(255,0,0,0.7)]";
+    }
+    
+    return classes;
+  }, [isOwner]);
   
   return (
-    <div className={`cyber-panel rounded-lg transition-all duration-300 hover:scale-[1.02] ${isOwner ? 'border-red-500 shadow-[0_0_15px_rgba(255,0,0,0.7)]' : ''}`}>
+    <div className={cardClasses}>
       <div className="flex items-center gap-4">
         <div className="relative">
           {isOwner && (
-            <div className="absolute -top-5 left-1/2 transform -translate-x-1/2 text-amber-400 animate-pulse" title="Owner">
-              👑
-            </div>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="absolute -top-5 left-1/2 transform -translate-x-1/2 text-amber-400 animate-pulse">
+                    <Crown size={18} className="fill-amber-400" />
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="top">
+                  <p>{ROLE_CONSTANTS.OWNER.TOOLTIP}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           )}
           <div className={`w-16 h-16 rounded-md overflow-hidden cyber-border ${isOwner ? 'shadow-[0_0_10px_rgba(255,0,0,0.7)]' : ''}`}>
             <Avatar className="w-full h-full">
@@ -102,7 +124,7 @@ const StaffCard: React.FC<StaffCardProps> = ({ staff, compact = false }) => {
               {rank && <p className={`text-xs ${isOwner ? 'text-red-400' : 'text-cyber-yellow'}`}>{rank}</p>}
             </div>
             <p className="text-sm">
-              Score: <span className="text-cyber-cyan font-bold">
+              Score: <span className={`font-bold ${isOwner ? 'text-fuchsia-400' : 'text-cyber-cyan'}`}>
                 {displayScore}
               </span>
             </p>

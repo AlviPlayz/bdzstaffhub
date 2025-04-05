@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
-import { StaffMember, StaffRole } from '@/types/staff';
+import { StaffMember, StaffRole, ROLE_CONSTANTS, enforceRoleRankCombination } from '@/types/staff';
 import * as staffService from '@/services/staff';
 import { toast } from '@/hooks/use-toast';
 
@@ -69,19 +69,22 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           staff.avatar = '/placeholder.svg';
         }
         
+        // Enforce role-rank combinations
+        const enforcedStaff = enforceRoleRankCombination(staff) as StaffMember;
+        
         // CRITICAL FIX: Ensure Owner role is properly identified and preserved during categorization
-        if (staff.role === 'Moderator') {
-          mods.push(staff);
-        } else if (staff.role === 'Builder') {
-          builds.push(staff);
-        } else if (staff.role === 'Manager' || staff.role === 'Owner') {
+        if (enforcedStaff.role === 'Moderator') {
+          mods.push(enforcedStaff);
+        } else if (enforcedStaff.role === 'Builder') {
+          builds.push(enforcedStaff);
+        } else if (enforcedStaff.role === ROLE_CONSTANTS.MANAGER.ROLE || enforcedStaff.role === ROLE_CONSTANTS.OWNER.ROLE) {
           // If the role is Owner, ensure it remains Owner when added to managers list
-          if (staff.role === 'Owner') {
+          if (enforcedStaff.role === ROLE_CONSTANTS.OWNER.ROLE) {
             // Ensure the role stays as a valid StaffRole type
-            staff.rank = 'Owner';
-            staff.overallGrade = 'SSS+';
+            enforcedStaff.rank = ROLE_CONSTANTS.OWNER.RANK;
+            enforcedStaff.overallGrade = ROLE_CONSTANTS.OWNER.GRADE;
           }
-          mgrs.push(staff);
+          mgrs.push(enforcedStaff);
         }
       });
       
@@ -135,57 +138,61 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const updateStaffMember = useCallback(async (updatedMember: StaffMember) => {
     try {
       // CRITICAL FIX: Preserve Owner role during update
-      const isOwner = updatedMember.role === 'Owner';
+      const isOwner = updatedMember.role === ROLE_CONSTANTS.OWNER.ROLE;
+      
+      // Apply role-rank enforcement
+      const enforcedMember = enforceRoleRankCombination(updatedMember) as StaffMember;
       
       // Ensure the rank is properly set before updating
-      if (!updatedMember.rank) {
-        if (updatedMember.role === 'Moderator') {
-          updatedMember.rank = 'Trial Mod';
-        } else if (updatedMember.role === 'Builder') {
-          updatedMember.rank = 'Trial Builder';
+      if (!enforcedMember.rank) {
+        if (enforcedMember.role === 'Moderator') {
+          enforcedMember.rank = 'Trial Mod';
+        } else if (enforcedMember.role === 'Builder') {
+          enforcedMember.rank = 'Trial Builder';
         } else if (isOwner) {
-          updatedMember.rank = 'Owner';
-        } else {
-          updatedMember.rank = 'Manager';
+          enforcedMember.rank = ROLE_CONSTANTS.OWNER.RANK;
+        } else if (enforcedMember.role === ROLE_CONSTANTS.MANAGER.ROLE) {
+          enforcedMember.rank = ROLE_CONSTANTS.MANAGER.RANK;
         }
       }
       
       // For Owner role, always ensure appropriate values
       if (isOwner) {
-        updatedMember.rank = 'Owner';
-        updatedMember.overallGrade = 'SSS+';
+        enforcedMember.rank = ROLE_CONSTANTS.OWNER.RANK;
+        enforcedMember.overallGrade = ROLE_CONSTANTS.OWNER.GRADE;
+        enforcedMember.role = ROLE_CONSTANTS.OWNER.ROLE;
       }
       
-      const result = await staffService.updateStaffMember(updatedMember);
+      const result = await staffService.updateStaffMember(enforcedMember);
       
       // Optimistic UI update for better user experience
       setStaffData(prev => {
         const newData = { ...prev };
         
-        if (updatedMember.role === 'Moderator') {
+        if (enforcedMember.role === 'Moderator') {
           newData.moderators = prev.moderators.map(mod => 
-            mod.id === updatedMember.id ? updatedMember : mod
+            mod.id === enforcedMember.id ? enforcedMember : mod
           );
-        } else if (updatedMember.role === 'Builder') {
+        } else if (enforcedMember.role === 'Builder') {
           newData.builders = prev.builders.map(builder => 
-            builder.id === updatedMember.id ? updatedMember : builder
+            builder.id === enforcedMember.id ? enforcedMember : builder
           );
-        } else if (updatedMember.role === 'Manager' || isOwner) {
+        } else if (enforcedMember.role === ROLE_CONSTANTS.MANAGER.ROLE || isOwner) {
           // CRITICAL FIX: Ensure Owner role is not lost during state updates
           if (isOwner) {
             // Make sure we're updating with the Owner role preserved
             const ownerMember: StaffMember = {
-              ...updatedMember,
-              role: 'Owner',
-              rank: 'Owner',
-              overallGrade: 'SSS+'
+              ...enforcedMember,
+              role: ROLE_CONSTANTS.OWNER.ROLE,
+              rank: ROLE_CONSTANTS.OWNER.RANK,
+              overallGrade: ROLE_CONSTANTS.OWNER.GRADE
             };
             newData.managers = prev.managers.map(manager => 
-              manager.id === updatedMember.id ? ownerMember : manager
+              manager.id === enforcedMember.id ? ownerMember : manager
             );
           } else {
             newData.managers = prev.managers.map(manager => 
-              manager.id === updatedMember.id ? updatedMember : manager
+              manager.id === enforcedMember.id ? enforcedMember : manager
             );
           }
         }
@@ -195,7 +202,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
       toast({
         title: "Success",
-        description: `${updatedMember.name}'s information has been updated.`,
+        description: `${enforcedMember.name}'s information has been updated.`,
       });
       
       // Trigger a refresh after a short delay to ensure everything is in sync
@@ -215,30 +222,33 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     try {
       console.log("Adding new staff member:", newMember.name, newMember.role);
       
+      // Apply role-rank enforcement to ensure consistency
+      const enforcedMember = enforceRoleRankCombination(newMember) as Omit<StaffMember, 'id'>;
+      
       // CRITICAL FIX: Preserve Owner role during creation
-      const isOwner = newMember.role === 'Owner';
+      const isOwner = enforcedMember.role === ROLE_CONSTANTS.OWNER.ROLE;
       
       // Ensure rank is set
-      if (!newMember.rank) {
-        if (newMember.role === 'Moderator') {
-          newMember.rank = 'Trial Mod';
-        } else if (newMember.role === 'Builder') {
-          newMember.rank = 'Trial Builder';
+      if (!enforcedMember.rank) {
+        if (enforcedMember.role === 'Moderator') {
+          enforcedMember.rank = 'Trial Mod';
+        } else if (enforcedMember.role === 'Builder') {
+          enforcedMember.rank = 'Trial Builder';
         } else if (isOwner) {
-          newMember.rank = 'Owner';
-        } else {
-          newMember.rank = 'Manager';
+          enforcedMember.rank = ROLE_CONSTANTS.OWNER.RANK;
+        } else if (enforcedMember.role === ROLE_CONSTANTS.MANAGER.ROLE) {
+          enforcedMember.rank = ROLE_CONSTANTS.MANAGER.RANK;
         }
       }
       
       // Special handling for Owner role
       if (isOwner) {
-        newMember.rank = 'Owner';
+        enforcedMember.rank = ROLE_CONSTANTS.OWNER.RANK;
         // @ts-ignore - TypeScript won't allow setting overallGrade on Omit type
-        newMember.overallGrade = 'SSS+';
+        enforcedMember.overallGrade = ROLE_CONSTANTS.OWNER.GRADE;
       }
       
-      const result = await staffService.createStaffMember(newMember);
+      const result = await staffService.createStaffMember(enforcedMember);
       
       if (result) {
         // Optimistic UI update
@@ -249,15 +259,15 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             newData.moderators = [...prev.moderators, result];
           } else if (result.role === 'Builder') {
             newData.builders = [...prev.builders, result];
-          } else if (result.role === 'Manager' || result.role === 'Owner') {
+          } else if (result.role === ROLE_CONSTANTS.MANAGER.ROLE || result.role === ROLE_CONSTANTS.OWNER.ROLE) {
             // CRITICAL FIX: If Owner, ensure role is preserved in state
-            if (result.role === 'Owner') {
+            if (result.role === ROLE_CONSTANTS.OWNER.ROLE) {
               // Make sure role, rank, and grade are set correctly
               const ownerResult: StaffMember = {
                 ...result,
-                role: 'Owner',
-                rank: 'Owner',
-                overallGrade: 'SSS+'
+                role: ROLE_CONSTANTS.OWNER.ROLE,
+                rank: ROLE_CONSTANTS.OWNER.RANK,
+                overallGrade: ROLE_CONSTANTS.OWNER.GRADE
               };
               newData.managers = [...prev.managers, ownerResult];
             } else {

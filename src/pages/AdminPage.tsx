@@ -104,6 +104,12 @@ const AdminPage: React.FC = () => {
     // Apply sorting with Owner always at top
     filtered.sort(sortStaffWithOwnerFirst);
     
+    // Log for debugging
+    console.log(`Filtered staff: ${filtered.length} members`);
+    if (filtered.some(s => s.role === 'Owner')) {
+      console.log("Owner is present in the filtered list");
+    }
+    
     setFilteredStaff(filtered);
   }, [allStaff, searchTerm, filterRole, sortBy, sortAsc, loading]);
   

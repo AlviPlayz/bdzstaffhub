@@ -28,6 +28,8 @@ const StaffList: React.FC<StaffListProps> = ({
   const getLetterGradeClassName = (grade: LetterGrade, role: StaffRole): string => {
     // Special case for Owner
     if (role === 'Owner') return 'text-fuchsia-400';
+    // Special case for Manager (use same style as SSS+)
+    if (role === 'Manager' && grade === 'SSS+') return 'text-fuchsia-400';
     
     // Regular grades
     switch (grade) {
@@ -83,8 +85,8 @@ const StaffList: React.FC<StaffListProps> = ({
   const sortedStaff = [...filteredStaff].sort((a, b) => {
     if (a.role === 'Owner' && b.role !== 'Owner') return -1;
     if (a.role !== 'Owner' && b.role === 'Owner') return 1;
-    if (a.role === 'Manager' && b.role !== 'Manager' && b.role !== 'Owner') return -1;
-    if (a.role !== 'Manager' && a.role !== 'Owner' && b.role === 'Manager') return 1;
+    if (a.role === 'Manager' && b.role !== 'Manager') return -1;
+    if (a.role !== 'Manager' && b.role === 'Manager') return 1;
     return 0;
   });
   
@@ -109,7 +111,7 @@ const StaffList: React.FC<StaffListProps> = ({
             >
               <div className="relative">
                 {isOwner(staff) && (
-                  <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 text-amber-400 animate-pulse z-10" title="Owner">
+                  <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 text-amber-400 animate-pulse z-10" title="Owner of the Realm">
                     👑
                   </div>
                 )}
@@ -145,8 +147,8 @@ const StaffList: React.FC<StaffListProps> = ({
                       </p>
                     )}
                   </div>
-                  <p className={`text-sm text-white ${getLetterGradeClassName(staff.overallGrade, staff.role)}`}>
-                    {staff.overallGrade}
+                  <p className={`text-sm ${getLetterGradeClassName(staff.overallGrade, staff.role)}`}>
+                    {staff.role === 'Owner' || staff.role === 'Manager' ? 'SSS+' : staff.overallGrade}
                   </p>
                 </div>
               </div>

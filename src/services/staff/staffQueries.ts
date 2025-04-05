@@ -18,7 +18,7 @@ export const getAllStaff = async (): Promise<StaffMember[]> => {
       .from('builders')
       .select('*');
 
-    // Fetch managers
+    // Fetch managers and owners
     const { data: managers, error: mgrError } = await supabase
       .from('managers')
       .select('*');
@@ -31,9 +31,26 @@ export const getAllStaff = async (): Promise<StaffMember[]> => {
     // Transform each row to StaffMember
     const modStaff = (moderators || []).map(row => transformToStaffMember(row, 'Moderator'));
     const buildStaff = (builders || []).map(row => transformToStaffMember(row, 'Builder'));
-    const mgrStaff = (managers || []).map(row => transformToStaffMember(row, 'Manager'));
     
-    console.log(`getAllStaff: Found ${modStaff.length} moderators, ${buildStaff.length} builders, ${mgrStaff.length} managers`);
+    // For managers table: identify owners using 'role' field
+    const mgrStaff = (managers || []).map(row => {
+      // Check if this manager record has an explicit Owner role
+      if (row.role === 'Owner') {
+        console.log("Found Owner record in managers table:", row.name);
+        return transformToStaffMember(row, 'Owner');
+      }
+      return transformToStaffMember(row, 'Manager');
+    });
+    
+    console.log(`getAllStaff: Found ${modStaff.length} moderators, ${buildStaff.length} builders, ${mgrStaff.length} managers/owners`);
+
+    // Log explicitly if we found any Owners
+    const ownerCount = mgrStaff.filter(staff => staff.role === 'Owner').length;
+    if (ownerCount > 0) {
+      console.log(`Found ${ownerCount} Owner records in the database`);
+    } else {
+      console.log("No Owner records found in the database");
+    }
 
     // Combine all staff
     return [...modStaff, ...buildStaff, ...mgrStaff];

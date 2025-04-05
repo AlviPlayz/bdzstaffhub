@@ -6,19 +6,31 @@ import { motion } from 'framer-motion';
 interface PerformanceBarProps {
   metric: PerformanceMetric;
   staffRole?: string;
+  isOverallGrade?: boolean;
 }
 
-const PerformanceBar: React.FC<PerformanceBarProps> = ({ metric, staffRole }) => {
+const PerformanceBar: React.FC<PerformanceBarProps> = ({ 
+  metric, 
+  staffRole,
+  isOverallGrade = false 
+}) => {
   const { name, score, letterGrade } = metric;
   const percentage = Math.min(Math.max(0, score * 10), 100); // Convert 0-10 score to 0-100 percentage
   const [isVisible, setIsVisible] = useState(false);
   
   // Special handling for Manager/Owner roles
   const isManagerOrOwner = staffRole === 'Manager' || staffRole === 'Owner';
-  const displayScore = isManagerOrOwner ? 'Immeasurable' : score.toFixed(1);
   
+  // For overall grade, always display SSS+ for Manager and Owner
   // For category-level metrics, keep showing "Immeasurable" for Manager/Owner
-  const displayGrade = isManagerOrOwner ? 'Immeasurable' : letterGrade;
+  const displayGrade = isManagerOrOwner 
+    ? (isOverallGrade ? 'SSS+' : 'Immeasurable') 
+    : letterGrade;
+  
+  // Display score - similarly handle based on if overall or category
+  const displayScore = isManagerOrOwner
+    ? (isOverallGrade ? '10.0' : 'Immeasurable')
+    : score.toFixed(1);
   
   // Add animation delay effect
   useEffect(() => {

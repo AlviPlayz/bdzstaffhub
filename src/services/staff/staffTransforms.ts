@@ -1,3 +1,4 @@
+
 import { StaffMember, StaffRole, LetterGrade, ModeratorMetrics, BuilderMetrics, ManagerMetrics, OwnerMetrics, PerformanceMetric } from '@/types/staff';
 import { calculateLetterGrade } from './staffGrading';
 
@@ -27,6 +28,13 @@ export const transformToStaffMember = (row: any, role: StaffRole): StaffMember =
   
   // Get the avatar URL, use placeholder if not available
   let avatar = row.profile_image_url || '/placeholder.svg';
+  
+  // CRITICAL FIX: Check for role field in the database row
+  // If a role field exists and it's "Owner", prioritize it
+  if (row.role === 'Owner') {
+    role = 'Owner';
+    console.log("Found Owner in database row, setting role accordingly");
+  }
   
   // Create metrics based on role
   if (role === 'Moderator') {
@@ -145,6 +153,8 @@ export const transformToStaffMember = (row: any, role: StaffRole): StaffMember =
   if (role === 'Owner') {
     rank = 'Owner';
   }
+
+  console.log(`Transformed staff member: ${row.name}, Role: ${role}, Rank: ${rank}, Grade: ${overallGrade}`);
   
   return {
     id: row.id,
@@ -187,6 +197,7 @@ export const transformToDatabase = (staff: StaffMember): any => {
   if (staff.role === 'Owner') {
     dbObject.rank = 'Owner';
     dbObject.overall_grade = 'SSS+'; // Ensure SSS+ grade for Owner in database
+    dbObject.role = 'Owner'; // CRITICAL FIX: Explicitly store role in database
   } else if (staff.role === 'Manager') {
     dbObject.rank = 'Manager';
     dbObject.overall_grade = 'SSS+'; // Ensure SSS+ grade for Manager in database

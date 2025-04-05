@@ -17,8 +17,8 @@ const StaffCard: React.FC<StaffCardProps> = ({ staff, compact = false }) => {
   const [imageError, setImageError] = useState(false);
   
   // Check if the staff is an Owner for special styling
-  const isOwner = role === ROLE_CONSTANTS.OWNER.ROLE;
-  const isManager = role === ROLE_CONSTANTS.MANAGER.ROLE;
+  const isOwner = role === 'Owner';
+  const isManager = role === 'Manager';
   
   // Extract initials for avatar fallback
   const getInitials = (name: string) => {
@@ -58,7 +58,7 @@ const StaffCard: React.FC<StaffCardProps> = ({ staff, compact = false }) => {
   // Special handling for Manager/Owner grades - always show SSS+ for overall grade
   const displayGrade = React.useMemo(() => {
     if (isOwner || isManager) {
-      return 'SSS+'; // Changed from Immeasurable to SSS+ for both Owner and Manager
+      return 'SSS+';
     }
     return overallGrade;
   }, [role, overallGrade, isOwner, isManager]);

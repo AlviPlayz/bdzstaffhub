@@ -16,30 +16,30 @@ export const createStaffMember = async (data: Omit<StaffMember, 'id'>) => {
     let staffData = { ...enforcedData } as StaffMember;
     
     // Force Owner rank for Owner role regardless of what was provided
-    if (staffData.role === ROLE_CONSTANTS.OWNER.ROLE) {
-      staffData.rank = ROLE_CONSTANTS.OWNER.RANK;
-      staffData.overallGrade = ROLE_CONSTANTS.OWNER.GRADE;
+    if (staffData.role === 'Owner') {
+      staffData.rank = 'Owner';
+      staffData.overallGrade = 'SSS+';
     } else if (!staffData.rank) {
       if (staffData.role === 'Moderator') {
         staffData.rank = 'Trial Mod';
       } else if (staffData.role === 'Builder') {
         staffData.rank = 'Trial Builder';
-      } else if (staffData.role === ROLE_CONSTANTS.MANAGER.ROLE) {
-        staffData.rank = ROLE_CONSTANTS.MANAGER.RANK;
+      } else if (staffData.role === 'Manager') {
+        staffData.rank = 'Manager';
       }
     }
     
     // Handle metrics based on role
-    if (staffData.role === ROLE_CONSTANTS.MANAGER.ROLE) {
+    if (staffData.role === 'Manager') {
       // Replace metrics with immeasurable ones - properly cast to the correct type
       staffData.metrics = createImmeasurableMetrics(staffData.role) as unknown as ManagerMetrics;
       // Set SSS+ overall grade for Manager
-      staffData.overallGrade = ROLE_CONSTANTS.MANAGER.GRADE;
-    } else if (staffData.role === ROLE_CONSTANTS.OWNER.ROLE) {
+      staffData.overallGrade = 'SSS+';
+    } else if (staffData.role === 'Owner') {
       // Replace metrics with Owner-specific ones - properly cast to the correct type
       staffData.metrics = createImmeasurableMetrics(staffData.role) as unknown as OwnerMetrics;
       // Set SSS+ overall grade for Owner
-      staffData.overallGrade = ROLE_CONSTANTS.OWNER.GRADE;
+      staffData.overallGrade = 'SSS+';
     }
     
     staffData.id = crypto.randomUUID(); // Temporary ID for transformation
@@ -89,21 +89,26 @@ export const createStaffMember = async (data: Omit<StaffMember, 'id'>) => {
         .select();
       if (error) throw error;
       result = newStaff?.[0];
-    } else if (data.role === ROLE_CONSTANTS.MANAGER.ROLE || data.role === ROLE_CONSTANTS.OWNER.ROLE) {
+    } else if (data.role === 'Manager' || data.role === 'Owner') {
       // Store both Manager and Owner in the managers table, but maintain their distinct roles
-      // For Owner role, ensure the rank is always "Owner"
-      if (data.role === ROLE_CONSTANTS.OWNER.ROLE) {
-        dbData.rank = ROLE_CONSTANTS.OWNER.RANK;
-        dbData.overall_grade = ROLE_CONSTANTS.OWNER.GRADE;
-        dbData.role = ROLE_CONSTANTS.OWNER.ROLE; // Explicitly set role field
+      // For Owner role, ensure the role field is explicitly set to 'Owner'
+      if (data.role === 'Owner') {
+        dbData.role = 'Owner'; // Explicitly set role field
+        dbData.rank = 'Owner';
+        dbData.overall_grade = 'SSS+';
+        console.log("Creating Owner with explicit role field:", dbData.role);
       }
       
       const { data: newStaff, error } = await supabase
         .from('managers')
         .insert([dbData])
         .select();
-      if (error) throw error;
+      if (error) {
+        console.error("Error inserting manager/owner:", error);
+        throw error;
+      }
       result = newStaff?.[0];
+      console.log("Inserted manager/owner result:", result);
     }
 
     if (!result) {
@@ -121,10 +126,11 @@ export const createStaffMember = async (data: Omit<StaffMember, 'id'>) => {
     }
     
     // Re-ensure Owner's role is preserved in the returned object
-    if (data.role === ROLE_CONSTANTS.OWNER.ROLE) {
-      transformedResult.role = ROLE_CONSTANTS.OWNER.ROLE;
-      transformedResult.rank = ROLE_CONSTANTS.OWNER.RANK;
-      transformedResult.overallGrade = ROLE_CONSTANTS.OWNER.GRADE;
+    if (data.role === 'Owner') {
+      transformedResult.role = 'Owner';
+      transformedResult.rank = 'Owner';
+      transformedResult.overallGrade = 'SSS+';
+      console.log("Returning Owner with role preserved:", transformedResult.role);
     }
     
     return transformedResult;

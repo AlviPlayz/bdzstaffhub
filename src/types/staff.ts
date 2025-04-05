@@ -66,29 +66,29 @@ export const ROLE_CONSTANTS = {
   }
 };
 
-// Validation function to ensure role/rank integrity
+// Simplified validation function - just checks that the rank matches the role for Manager/Owner
 export const validateRoleRankCombination = (role: StaffRole, rank: string): boolean => {
-  if (role === 'Owner' && rank !== ROLE_CONSTANTS.OWNER.RANK) {
+  if (role === 'Owner' && rank !== 'Owner') {
     return false;
   }
   
-  if (role === 'Manager' && rank !== ROLE_CONSTANTS.MANAGER.RANK) {
+  if (role === 'Manager' && rank !== 'Manager') {
     return false;
   }
   
   return true;
 };
 
-// Enforce correct role/rank combinations
+// Simplified enforcement function - just ensures correct rank for role
 export const enforceRoleRankCombination = (staff: Partial<StaffMember>): Partial<StaffMember> => {
   const updatedStaff = { ...staff };
   
   if (updatedStaff.role === 'Owner') {
-    updatedStaff.rank = ROLE_CONSTANTS.OWNER.RANK;
-    updatedStaff.overallGrade = ROLE_CONSTANTS.OWNER.GRADE;
+    updatedStaff.rank = 'Owner';
+    updatedStaff.overallGrade = 'SSS+';
   } else if (updatedStaff.role === 'Manager') {
-    updatedStaff.rank = ROLE_CONSTANTS.MANAGER.RANK;
-    updatedStaff.overallGrade = ROLE_CONSTANTS.MANAGER.GRADE;
+    updatedStaff.rank = 'Manager';
+    updatedStaff.overallGrade = 'SSS+';
   }
   
   return updatedStaff;

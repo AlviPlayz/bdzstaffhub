@@ -23,7 +23,6 @@ const PerformanceBar: React.FC<PerformanceBarProps> = ({
   const isManagerOrOwner = staffRole === 'Manager' || staffRole === 'Owner';
   
   // For all grades for Manager/Owner, always display SSS+
-  // (previously we used "Immeasurable" for category-level metrics, now use SSS+ everywhere)
   const displayGrade = isManagerOrOwner ? 'SSS+' : letterGrade;
   
   // Display score - similarly handle based on if overall or category

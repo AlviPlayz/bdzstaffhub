@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { StaffMember, StaffRole, LetterGrade } from '@/types/staff';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
@@ -114,7 +115,7 @@ const StaffList: React.FC<StaffListProps> = ({
                     👑
                   </div>
                 )}
-                <div className={`w-10 h-10 ${isOwner(staff) ? 'rounded' : 'rounded-md'} overflow-hidden mr-3 ${isOwner(staff) ? 'shadow-[0_0_10px_rgba(255,0,0,0.7)]' : ''}`}>
+                <div className={`w-10 h-10 ${isOwner(staff) ? 'rounded-none' : 'rounded-md'} overflow-hidden mr-3 ${isOwner(staff) ? 'shadow-[0_0_10px_rgba(255,0,0,0.7)]' : ''}`}>
                   <Avatar className="w-full h-full">
                     <AvatarImage 
                       src={getAvatarUrl(staff.avatar)} 

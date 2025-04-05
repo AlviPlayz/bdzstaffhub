@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { StaffMember, ROLE_CONSTANTS } from '@/types/staff';
+import { StaffMember } from '@/types/staff';
 import { getGradeColorClass } from '@/utils/gradeUtils';
 import { ArrowUpRight, Crown } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -87,12 +87,12 @@ const StaffCard: React.FC<StaffCardProps> = ({ staff, compact = false }) => {
                   </div>
                 </TooltipTrigger>
                 <TooltipContent side="top">
-                  <p>{ROLE_CONSTANTS.OWNER.TOOLTIP}</p>
+                  <p>Owner of the Realm</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
           )}
-          <div className={`w-16 h-16 ${isOwner ? 'rounded' : 'rounded-md'} overflow-hidden cyber-border ${isOwner ? 'shadow-[0_0_10px_rgba(255,0,0,0.7)]' : ''}`}>
+          <div className={`w-16 h-16 ${isOwner ? 'rounded-none' : 'rounded-md'} overflow-hidden cyber-border ${isOwner ? 'shadow-[0_0_10px_rgba(255,0,0,0.7)]' : ''}`}>
             <Avatar className="w-full h-full">
               <AvatarImage 
                 src={avatarUrl}

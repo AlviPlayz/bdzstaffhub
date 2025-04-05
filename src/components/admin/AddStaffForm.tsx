@@ -65,7 +65,7 @@ const AddStaffForm: React.FC<AddStaffFormProps> = ({ isOpen, onClose, onAddStaff
     } else if (currentRole === 'Manager') {
       form.setValue('rank', 'Manager');
     } else if (currentRole === 'Owner') {
-      // Lock rank to "Owner" for Owner role
+      // Set rank to "Owner" for Owner role
       form.setValue('rank', 'Owner');
     }
   }, [currentRole, form]);

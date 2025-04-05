@@ -14,12 +14,17 @@ export const calculateLetterGrade = (score: number): LetterGrade => {
   return 'E-';
 };
 
-export const calculateOverallGrade = (metrics: Record<string, PerformanceMetric>): LetterGrade => {
+export const calculateOverallGrade = (metrics: Record<string, PerformanceMetric>, role?: StaffRole): LetterGrade => {
+  // Special case for Manager and Owner roles
+  if (role === 'Manager' || role === 'Owner') {
+    return 'SSS+';
+  }
+  
   const values = Object.values(metrics);
   const totalScore = values.reduce((sum, metric) => sum + metric.score, 0);
   const average = totalScore / values.length;
   
-  // Special case for managers with perfect 10 score
+  // Special case for perfect 10 score
   if (average === 10) {
     return 'SSS+';
   }
@@ -51,7 +56,7 @@ export const createImmeasurableMetric = (name: string): PerformanceMetric => {
     id: name.toLowerCase().replace(/\s+/g, '-'),
     name,
     score: 10, // We'll give it a 10 score for calculation purposes
-    letterGrade: 'Immeasurable'
+    letterGrade: 'SSS+'
   };
 };
 

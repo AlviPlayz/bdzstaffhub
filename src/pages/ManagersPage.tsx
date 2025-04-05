@@ -22,7 +22,7 @@ const ManagersPage: React.FC = () => {
       <div className="mb-8 flex items-center">
         <Trophy size={24} className="text-cyber-cyan mr-3" />
         <div>
-          <h1 className="text-3xl font-digital text-white mb-2">Leadership</h1>
+          <h1 className="text-3xl font-digital text-white mb-2">Management</h1>
           <p className="text-white/60 font-cyber">Owner and Managers performance rankings</p>
         </div>
       </div>
@@ -35,7 +35,7 @@ const ManagersPage: React.FC = () => {
       
       {sortedManagers.length === 0 && (
         <div className="cyber-panel text-center py-12">
-          <p className="text-cyber-cyan font-digital text-xl mb-2">No leadership found</p>
+          <p className="text-cyber-cyan font-digital text-xl mb-2">No management found</p>
           <p className="text-white/60 font-cyber">No Owner or Manager data is currently available</p>
         </div>
       )}

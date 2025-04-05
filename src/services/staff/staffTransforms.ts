@@ -1,4 +1,3 @@
-
 import { StaffMember, StaffRole, LetterGrade, ModeratorMetrics, BuilderMetrics, ManagerMetrics, OwnerMetrics, PerformanceMetric } from '@/types/staff';
 import { calculateLetterGrade } from './staffGrading';
 
@@ -10,7 +9,7 @@ export const createMetric = (name: string, score: number, role?: StaffRole): Per
       id: name.toLowerCase().replace(/\s+/g, '-'),
       name,
       score: 10, // Maximum score for display purposes
-      letterGrade: 'Immeasurable' as LetterGrade // Individual metrics remain Immeasurable
+      letterGrade: 'SSS+' as LetterGrade // Changed from 'Immeasurable' to 'SSS+'
     };
   }
   
@@ -29,7 +28,7 @@ export const transformToStaffMember = (row: any, role: StaffRole): StaffMember =
   // Get the avatar URL, use placeholder if not available
   let avatar = row.profile_image_url || '/placeholder.svg';
   
-  // CRITICAL FIX: Check for role field in the database row
+  // CRITICAL: Check for role field in the database row
   // If a role field exists and it's "Owner", prioritize it
   if (row.role === 'Owner') {
     role = 'Owner';
@@ -65,7 +64,7 @@ export const transformToStaffMember = (row: any, role: StaffRole): StaffMember =
       consistency: createMetric('Consistency', typeof row.consistency !== 'undefined' ? row.consistency : 0)
     };
   } else if (role === 'Manager') {
-    // Specialized handling for Manager role
+    // Specialized handling for Manager role with SSS+ grades
     metrics = {
       // Moderator metrics
       responsiveness: createMetric('Responsiveness', 10, role),
@@ -121,7 +120,7 @@ export const transformToStaffMember = (row: any, role: StaffRole): StaffMember =
   if (role === 'Manager') {
     // Manager specific overall grading
     overallScore = 10;
-    overallGrade = 'SSS+'; // Changed from 'Immeasurable' to 'SSS+'
+    overallGrade = 'SSS+'; // Always SSS+ for Manager
   } else if (role === 'Owner') {
     // Owner specific overall grading - distinct from Manager
     overallScore = 10;
@@ -193,14 +192,15 @@ export const transformToDatabase = (staff: StaffMember): any => {
     profile_image_url: staff.avatar
   };
 
-  // Force Owner rank for Owner role
+  // CRITICAL: Force Owner rank for Owner role and add explicit role field
   if (staff.role === 'Owner') {
     dbObject.rank = 'Owner';
     dbObject.overall_grade = 'SSS+'; // Ensure SSS+ grade for Owner in database
-    dbObject.role = 'Owner'; // CRITICAL FIX: Explicitly store role in database
+    dbObject.role = 'Owner'; // Store explicit role identifier in database
   } else if (staff.role === 'Manager') {
     dbObject.rank = 'Manager';
     dbObject.overall_grade = 'SSS+'; // Ensure SSS+ grade for Manager in database
+    dbObject.role = 'Manager'; // Store explicit role identifier
   } else {
     dbObject.overall_grade = staff.overallGrade;
   }

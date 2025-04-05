@@ -92,7 +92,7 @@ const StaffCard: React.FC<StaffCardProps> = ({ staff, compact = false }) => {
               </Tooltip>
             </TooltipProvider>
           )}
-          <div className={`w-16 h-16 rounded-md overflow-hidden cyber-border ${isOwner ? 'shadow-[0_0_10px_rgba(255,0,0,0.7)]' : ''}`}>
+          <div className={`w-16 h-16 ${isOwner ? 'rounded' : 'rounded-md'} overflow-hidden cyber-border ${isOwner ? 'shadow-[0_0_10px_rgba(255,0,0,0.7)]' : ''}`}>
             <Avatar className="w-full h-full">
               <AvatarImage 
                 src={avatarUrl}

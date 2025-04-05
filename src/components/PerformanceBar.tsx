@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { LetterGrade, PerformanceMetric } from '@/types/staff';
 import { getGradeColorClass } from '@/utils/gradeUtils';
@@ -21,16 +22,12 @@ const PerformanceBar: React.FC<PerformanceBarProps> = ({
   // Special handling for Manager/Owner roles
   const isManagerOrOwner = staffRole === 'Manager' || staffRole === 'Owner';
   
-  // For overall grade, always display SSS+ for Manager and Owner
-  // For category-level metrics, keep showing "Immeasurable" for Manager/Owner
-  const displayGrade = isManagerOrOwner 
-    ? (isOverallGrade ? 'SSS+' : 'Immeasurable') 
-    : letterGrade;
+  // For all grades for Manager/Owner, always display SSS+
+  // (previously we used "Immeasurable" for category-level metrics, now use SSS+ everywhere)
+  const displayGrade = isManagerOrOwner ? 'SSS+' : letterGrade;
   
   // Display score - similarly handle based on if overall or category
-  const displayScore = isManagerOrOwner
-    ? (isOverallGrade ? '10.0' : 'Immeasurable')
-    : score.toFixed(1);
+  const displayScore = isManagerOrOwner ? 'Immeasurable' : score.toFixed(1);
   
   // Add animation delay effect
   useEffect(() => {

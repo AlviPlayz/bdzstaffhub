@@ -19,6 +19,7 @@ export const createStaffMember = async (data: Omit<StaffMember, 'id'>) => {
     if (staffData.role === 'Owner') {
       staffData.rank = 'Owner';
       staffData.overallGrade = 'SSS+';
+      console.log(`createStaffMember: Enforcing Owner rank and SSS+ grade for ${staffData.name}`);
     } else if (!staffData.rank) {
       if (staffData.role === 'Moderator') {
         staffData.rank = 'Trial Mod';
@@ -90,13 +91,15 @@ export const createStaffMember = async (data: Omit<StaffMember, 'id'>) => {
       if (error) throw error;
       result = newStaff?.[0];
     } else if (data.role === 'Manager' || data.role === 'Owner') {
-      // Store both Manager and Owner in the managers table, but maintain their distinct roles
+      // CRITICAL FIX: Store both Manager and Owner in the managers table, but maintain their distinct roles
       // For Owner role, ensure the role field is explicitly set to 'Owner'
       if (data.role === 'Owner') {
         dbData.role = 'Owner'; // Explicitly set role field
         dbData.rank = 'Owner';
         dbData.overall_grade = 'SSS+';
         console.log("Creating Owner with explicit role field:", dbData.role);
+      } else {
+        dbData.role = 'Manager'; // Explicitly set role field for Manager too
       }
       
       const { data: newStaff, error } = await supabase

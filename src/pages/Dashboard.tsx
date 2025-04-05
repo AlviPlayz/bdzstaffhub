@@ -90,18 +90,18 @@ const Dashboard: React.FC = () => {
             <Trophy size={24} className="text-cyber-cyan" />
           </div>
           <div>
-            <h3 className="text-sm text-white/60 font-cyber">Leadership</h3>
+            <h3 className="text-sm text-white/60 font-cyber">Management</h3>
             <p className="text-2xl font-digital text-white">{managers.length}</p>
           </div>
         </div>
       </div>
       
-      {/* Leadership Section (Owner + Managers) */}
+      {/* Management Section (Owner + Managers) */}
       <div className="mb-10">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center">
             <Trophy size={20} className="text-cyber-cyan mr-2" />
-            <h2 className="text-xl font-digital text-white">Leadership Overview</h2>
+            <h2 className="text-xl font-digital text-white">Management Overview</h2>
           </div>
           <Link to="/managers" className="cyber-button text-sm py-1 px-3 rounded">
             View All

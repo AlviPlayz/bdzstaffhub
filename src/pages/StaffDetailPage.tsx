@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getStaffMemberById } from '@/services/staff';
@@ -8,15 +7,17 @@ import PerformanceBar from '@/components/PerformanceBar';
 import LoadingState from '@/components/LoadingState';
 import { ArrowLeft } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-
 const StaffDetailPage: React.FC = () => {
-  const { id } = useParams<{ id: string }>();
+  const {
+    id
+  } = useParams<{
+    id: string;
+  }>();
   const navigate = useNavigate();
   const [staff, setStaff] = useState<StaffMember | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [imageError, setImageError] = useState(false);
-
   useEffect(() => {
     const fetchStaffDetails = async () => {
       try {
@@ -25,9 +26,7 @@ const StaffDetailPage: React.FC = () => {
           setLoading(false);
           return;
         }
-
         const staffData = await getStaffMemberById(id);
-        
         if (staffData) {
           setStaff(staffData);
         } else {
@@ -40,21 +39,15 @@ const StaffDetailPage: React.FC = () => {
         setLoading(false);
       }
     };
-
     fetchStaffDetails();
   }, [id]);
-
   const handleGoBack = () => {
     navigate(-1);
   };
 
   // Get initials for avatar fallback
   const getInitials = (name: string) => {
-    return name
-      .split(' ')
-      .map(part => part[0])
-      .join('')
-      .toUpperCase();
+    return name.split(' ').map(part => part[0]).join('').toUpperCase();
   };
 
   // Add cache-busting parameter to avatar URL if it's not the placeholder
@@ -62,7 +55,7 @@ const StaffDetailPage: React.FC = () => {
     if (!avatarUrl || avatarUrl === '/placeholder.svg' || imageError) {
       return '/placeholder.svg';
     }
-    
+
     // Add a timestamp to bust cache
     try {
       const url = new URL(avatarUrl);
@@ -74,38 +67,26 @@ const StaffDetailPage: React.FC = () => {
       return avatarUrl;
     }
   };
-
   if (loading) {
     return <LoadingState message="Loading staff details..." />;
   }
-
   if (error || !staff) {
-    return (
-      <div className="container mx-auto p-4 min-h-screen">
+    return <div className="container mx-auto p-4 min-h-screen">
         <div className="cyber-panel p-8 text-center">
           <h1 className="text-2xl text-red-500 mb-4">Error</h1>
           <p className="text-white mb-6">{error || 'Staff member not found'}</p>
-          <button 
-            onClick={handleGoBack} 
-            className="cyber-button flex items-center gap-2 mx-auto"
-          >
+          <button onClick={handleGoBack} className="cyber-button flex items-center gap-2 mx-auto">
             <ArrowLeft size={16} />
             Go Back
           </button>
         </div>
-      </div>
-    );
+      </div>;
   }
 
   // Check if the staff is an Owner for special styling
   const isOwner = staff.role === 'Owner';
-
-  return (
-    <div className="container mx-auto p-4 min-h-screen">
-      <button 
-        onClick={handleGoBack} 
-        className="cyber-button mb-4 flex items-center gap-2"
-      >
+  return <div className="container mx-auto p-4 min-h-screen">
+      <button onClick={handleGoBack} className="cyber-button mb-4 flex items-center gap-2">
         <ArrowLeft size={16} />
         Back
       </button>
@@ -118,19 +99,12 @@ const StaffDetailPage: React.FC = () => {
           <div className={`cyber-panel mb-6 ${isOwner ? 'border-red-500 shadow-[0_0_15px_rgba(255,0,0,0.7)]' : ''}`}>
             <div className="flex items-center gap-4 mb-4">
               <div className="relative">
-                {isOwner && (
-                  <div className="absolute -top-5 left-1/2 transform -translate-x-1/2 text-amber-400 animate-pulse z-10" title="Owner">
+                {isOwner && <div className="absolute -top-5 left-1/2 transform -translate-x-1/2 text-amber-400 animate-pulse z-10" title="Owner">
                     👑
-                  </div>
-                )}
+                  </div>}
                 <div className={`w-20 h-20 rounded-md overflow-hidden cyber-border ${isOwner ? 'shadow-[0_0_10px_rgba(255,0,0,0.7)]' : ''}`}>
                   <Avatar className="w-full h-full">
-                    <AvatarImage 
-                      src={getAvatarUrl(staff.avatar)}
-                      alt={staff.name} 
-                      className="w-full h-full object-cover"
-                      onError={() => setImageError(true)}
-                    />
+                    <AvatarImage src={getAvatarUrl(staff.avatar)} alt={staff.name} className="w-full h-full object-cover" onError={() => setImageError(true)} />
                     <AvatarFallback className="bg-cyber-darkpurple text-cyber-cyan">
                       {getInitials(staff.name)}
                     </AvatarFallback>
@@ -163,9 +137,7 @@ const StaffDetailPage: React.FC = () => {
           <div className="cyber-panel">
             <h2 className="text-xl font-digital text-cyber-cyan mb-4">Performance Metrics</h2>
             <div className="max-h-[400px] overflow-y-auto pr-2 space-y-3">
-              {Object.entries(staff.metrics).map(([key, metric]) => (
-                <PerformanceBar key={key} metric={metric} staffRole={staff.role} />
-              ))}
+              {Object.entries(staff.metrics).map(([key, metric]) => <PerformanceBar key={key} metric={metric} staffRole={staff.role} />)}
             </div>
           </div>
         </div>
@@ -173,12 +145,10 @@ const StaffDetailPage: React.FC = () => {
         <div className="cyber-panel">
           <h2 className="text-xl font-digital text-cyber-cyan mb-4">Performance History</h2>
           <div className="p-4 bg-cyber-darkpurple/50 rounded">
-            <p className="text-white">Performance history data will be implemented in a future update.</p>
+            <p className="text-white"></p>
           </div>
         </div>
       </div>
-    </div>
-  );
+    </div>;
 };
-
 export default StaffDetailPage;

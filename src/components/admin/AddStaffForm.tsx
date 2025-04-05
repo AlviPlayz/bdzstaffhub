@@ -65,7 +65,7 @@ const AddStaffForm: React.FC<AddStaffFormProps> = ({ isOpen, onClose, onAddStaff
     } else if (currentRole === 'Manager') {
       form.setValue('rank', 'Manager');
     } else if (currentRole === 'Owner') {
-      // Set rank to "Owner" for Owner role
+      // Lock rank to "Owner" for Owner role
       form.setValue('rank', 'Owner');
     }
   }, [currentRole, form]);
@@ -248,31 +248,8 @@ const AddStaffForm: React.FC<AddStaffFormProps> = ({ isOpen, onClose, onAddStaff
     }
   }, [isOpen, form]);
   
-  // Determine available rank options based on role
-  const getRankOptions = () => {
-    if (currentRole === 'Owner') {
-      return [{ value: 'Owner', label: 'Owner' }];
-    } else if (currentRole === 'Manager') {
-      return [{ value: 'Manager', label: 'Manager' }];
-    } else if (currentRole === 'Moderator') {
-      return [
-        { value: 'Sr. Mod', label: 'Sr. Mod' },
-        { value: 'Mod', label: 'Mod' },
-        { value: 'Jr. Mod', label: 'Jr. Mod' },
-        { value: 'Trial Mod', label: 'Trial Mod' }
-      ];
-    } else if (currentRole === 'Builder') {
-      return [
-        { value: 'Head Builder', label: 'Head Builder' },
-        { value: 'Builder', label: 'Builder' },
-        { value: 'Trial Builder', label: 'Trial Builder' }
-      ];
-    }
-    return [];
-  };
-  
-  // Get the rank options
-  const rankOptions = getRankOptions();
+  // Determine if rank field should be disabled (locked)
+  const isRankLocked = currentRole === 'Owner';
   
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -347,24 +324,43 @@ const AddStaffForm: React.FC<AddStaffFormProps> = ({ isOpen, onClose, onAddStaff
                   <Select
                     onValueChange={field.onChange}
                     defaultValue={field.value}
-                    disabled={false} // Never disable, just control options
+                    disabled={isRankLocked}
                   >
                     <FormControl>
-                      <SelectTrigger className="w-full bg-cyber-black border border-cyber-cyan rounded px-4 py-2 text-white font-mono focus:outline-none focus:ring-2 focus:ring-cyber-cyan">
+                      <SelectTrigger className={`w-full bg-cyber-black border border-cyber-cyan rounded px-4 py-2 text-white font-mono focus:outline-none focus:ring-2 focus:ring-cyber-cyan ${isRankLocked ? 'opacity-70' : ''}`}>
                         <SelectValue placeholder="Select rank" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent className="bg-cyber-black border border-cyber-cyan text-white">
-                      {rankOptions.map(option => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
+                      {currentRole === 'Moderator' && (
+                        <>
+                          <SelectItem value="Sr. Mod">Sr. Mod</SelectItem>
+                          <SelectItem value="Mod">Mod</SelectItem>
+                          <SelectItem value="Jr. Mod">Jr. Mod</SelectItem>
+                          <SelectItem value="Trial Mod">Trial Mod</SelectItem>
+                        </>
+                      )}
+                      
+                      {currentRole === 'Builder' && (
+                        <>
+                          <SelectItem value="Head Builder">Head Builder</SelectItem>
+                          <SelectItem value="Builder">Builder</SelectItem>
+                          <SelectItem value="Trial Builder">Trial Builder</SelectItem>
+                        </>
+                      )}
+                      
+                      {currentRole === 'Manager' && (
+                        <SelectItem value="Manager">Manager</SelectItem>
+                      )}
+                      
+                      {currentRole === 'Owner' && (
+                        <SelectItem value="Owner">Owner</SelectItem>
+                      )}
                     </SelectContent>
                   </Select>
-                  {currentRole === 'Owner' && (
-                    <p className="text-xs text-cyber-cyan mt-1">
-                      Only 'Owner' rank is allowed for Owner role
+                  {isRankLocked && (
+                    <p className="text-xs text-red-400 mt-1">
+                      Owner rank cannot be changed
                     </p>
                   )}
                 </FormItem>

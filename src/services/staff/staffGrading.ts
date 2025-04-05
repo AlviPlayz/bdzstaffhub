@@ -34,7 +34,7 @@ export const createImmeasurableMetric = (name: string): PerformanceMetric => {
     id: name.toLowerCase().replace(/\s+/g, '-'),
     name,
     score: 10, // We'll give it a 10 score for calculation purposes
-    letterGrade: 'SSS+' // Changed from 'Immeasurable' to 'SSS+'
+    letterGrade: 'Immeasurable'
   };
 };
 
@@ -42,7 +42,6 @@ export const createImmeasurableMetric = (name: string): PerformanceMetric => {
  * Create a set of Immeasurable metrics for Manager or Owner
  */
 export const createImmeasurableMetrics = (role: 'Manager' | 'Owner'): Record<string, PerformanceMetric> => {
-  // Same implementation for both Manager and Owner roles
   return {
     // Moderator metrics
     responsiveness: createImmeasurableMetric('Responsiveness'),
@@ -63,27 +62,27 @@ export const createImmeasurableMetrics = (role: 'Manager' | 'Owner'): Record<str
     contribution: createImmeasurableMetric('Contribution'),
     cooperativeness: createImmeasurableMetric('Cooperativeness'),
     creativity: createImmeasurableMetric('Creativity'),
-    consistency: createImmeasurableMetric('Consistency'),
+    consistency: createImmeasurableMetric('Consistency')
   };
 };
 
 /**
- * Get the color class for a given grade
+ * Get color class based on letter grade
  */
 export const getGradeColorClass = (grade: LetterGrade): string => {
   switch(grade) {
-    case 'Immeasurable': return 'grade-immeasurable';
-    case 'SSS+': return 'grade-sss';
-    case 'S+': return 'grade-splus';
-    case 'S': return 'grade-s';
-    case 'A+': return 'grade-aplus';
-    case 'A': return 'grade-a';
-    case 'B+': return 'grade-bplus';
-    case 'B': return 'grade-b';
-    case 'C': return 'grade-c';
-    case 'D': return 'grade-d';
-    case 'E': return 'grade-e';
-    case 'E-': return 'grade-eminus';
-    default: return 'grade-c';
+    case 'Immeasurable': return 'text-[#ff00ff] font-bold';
+    case 'SSS+': return 'text-[#ff00ff] font-bold';
+    case 'S+': return 'text-[#ff9900] font-bold';
+    case 'S': return 'text-[#ffcc00] font-bold';
+    case 'A+': return 'text-[#99ff00] font-bold';
+    case 'A': return 'text-[#33cc33] font-bold';
+    case 'B+': return 'text-[#00ccff] font-bold';
+    case 'B': return 'text-[#3399ff] font-bold';
+    case 'C': return 'text-[#cc99ff] font-bold';
+    case 'D': return 'text-[#ff6666] font-bold';
+    case 'E': return 'text-[#cc3300] font-bold';
+    case 'E-': return 'text-[#990000] font-bold';
+    default: return 'text-white font-bold';
   }
 };

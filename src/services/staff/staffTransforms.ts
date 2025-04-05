@@ -5,11 +5,14 @@ import { calculateLetterGrade } from './staffGrading';
 export const createMetric = (name: string, score: number, role?: StaffRole): PerformanceMetric => {
   // For Manager and Owner roles, set special scores
   if (role === 'Manager' || role === 'Owner') {
+    // Special handling for Owner role
+    const letterGrade = role === 'Owner' ? 'SSS+' : 'Immeasurable';
+    
     return {
       id: name.toLowerCase().replace(/\s+/g, '-'),
       name,
       score: 10, // Maximum score for display purposes
-      letterGrade: 'SSS+' as LetterGrade // Changed from 'Immeasurable' to 'SSS+'
+      letterGrade: letterGrade as LetterGrade
     };
   }
   
@@ -27,13 +30,6 @@ export const transformToStaffMember = (row: any, role: StaffRole): StaffMember =
   
   // Get the avatar URL, use placeholder if not available
   let avatar = row.profile_image_url || '/placeholder.svg';
-  
-  // CRITICAL: Check for role field in the database row
-  // If a role field exists and it's "Owner", prioritize it
-  if (row.role === 'Owner') {
-    role = 'Owner';
-    console.log("Found Owner in database row, setting role accordingly");
-  }
   
   // Create metrics based on role
   if (role === 'Moderator') {
@@ -64,7 +60,7 @@ export const transformToStaffMember = (row: any, role: StaffRole): StaffMember =
       consistency: createMetric('Consistency', typeof row.consistency !== 'undefined' ? row.consistency : 0)
     };
   } else if (role === 'Manager') {
-    // Specialized handling for Manager role with SSS+ grades
+    // Specialized handling for Manager role
     metrics = {
       // Moderator metrics
       responsiveness: createMetric('Responsiveness', 10, role),
@@ -120,11 +116,11 @@ export const transformToStaffMember = (row: any, role: StaffRole): StaffMember =
   if (role === 'Manager') {
     // Manager specific overall grading
     overallScore = 10;
-    overallGrade = 'SSS+'; // Always SSS+ for Manager
+    overallGrade = 'Immeasurable';
   } else if (role === 'Owner') {
     // Owner specific overall grading - distinct from Manager
     overallScore = 10;
-    overallGrade = 'SSS+'; // Always 'SSS+' for Owner
+    overallGrade = 'SSS+';
   } else {
     // Regular score calculation for other roles
     const metricEntries = Object.values(metrics);
@@ -152,8 +148,6 @@ export const transformToStaffMember = (row: any, role: StaffRole): StaffMember =
   if (role === 'Owner') {
     rank = 'Owner';
   }
-
-  console.log(`Transformed staff member: ${row.name}, Role: ${role}, Rank: ${rank}, Grade: ${overallGrade}`);
   
   return {
     id: row.id,
@@ -192,15 +186,16 @@ export const transformToDatabase = (staff: StaffMember): any => {
     profile_image_url: staff.avatar
   };
 
-  // CRITICAL: Force Owner rank for Owner role and add explicit role field
+  // Force Owner rank for Owner role
   if (staff.role === 'Owner') {
     dbObject.rank = 'Owner';
-    dbObject.overall_grade = 'SSS+'; // Ensure SSS+ grade for Owner in database
-    dbObject.role = 'Owner'; // Store explicit role identifier in database
+  }
+
+  // Set overall_grade based on role
+  if (staff.role === 'Owner') {
+    dbObject.overall_grade = 'SSS+';
   } else if (staff.role === 'Manager') {
-    dbObject.rank = 'Manager';
-    dbObject.overall_grade = 'SSS+'; // Ensure SSS+ grade for Manager in database
-    dbObject.role = 'Manager'; // Store explicit role identifier
+    dbObject.overall_grade = 'Immeasurable';
   } else {
     dbObject.overall_grade = staff.overallGrade;
   }

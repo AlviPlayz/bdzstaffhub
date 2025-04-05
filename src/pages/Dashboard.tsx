@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useStaff } from '@/contexts/StaffContext';
 import StaffCard from '@/components/StaffCard';
@@ -12,16 +11,6 @@ const Dashboard: React.FC = () => {
   // Get top performers from each category
   const topModerator = [...moderators].sort((a, b) => b.overallScore - a.overallScore)[0];
   const topBuilder = [...builders].sort((a, b) => b.overallScore - a.overallScore)[0];
-  
-  // Sort managers by role first (Owner at top), then by overall score
-  const sortedManagers = [...managers].sort((a, b) => {
-    // Owner always comes first
-    if (a.role === 'Owner' && b.role !== 'Owner') return -1;
-    if (a.role !== 'Owner' && b.role === 'Owner') return 1;
-    
-    // Then sort by overall score
-    return b.overallScore - a.overallScore;
-  });
   
   if (loading) {
     return (
@@ -90,18 +79,18 @@ const Dashboard: React.FC = () => {
             <Trophy size={24} className="text-cyber-cyan" />
           </div>
           <div>
-            <h3 className="text-sm text-white/60 font-cyber">Management</h3>
+            <h3 className="text-sm text-white/60 font-cyber">Managers</h3>
             <p className="text-2xl font-digital text-white">{managers.length}</p>
           </div>
         </div>
       </div>
       
-      {/* Management Section (Owner + Managers) */}
+      {/* Managers Section */}
       <div className="mb-10">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center">
             <Trophy size={20} className="text-cyber-cyan mr-2" />
-            <h2 className="text-xl font-digital text-white">Management Overview</h2>
+            <h2 className="text-xl font-digital text-white">Managers Overview</h2>
           </div>
           <Link to="/managers" className="cyber-button text-sm py-1 px-3 rounded">
             View All
@@ -109,7 +98,7 @@ const Dashboard: React.FC = () => {
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {sortedManagers.map(manager => (
+          {managers.map(manager => (
             <StaffCard key={manager.id} staff={manager} />
           ))}
         </div>

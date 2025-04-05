@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StaffMember, StaffRole, LetterGrade, validateRoleRankCombination } from '@/types/staff';
+import { StaffMember, StaffRole } from '@/types/staff';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { 
   Select,
@@ -9,9 +9,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { getGradeColorClass } from '@/services/staff/staffGrading';
-import { toast } from '@/hooks/use-toast';
-import { Crown } from 'lucide-react';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface StaffMetricsEditorProps {
   selectedStaff: StaffMember | null;
@@ -85,24 +82,8 @@ const StaffMetricsEditor: React.FC<StaffMetricsEditorProps> = ({
   };
   
   // Check if the staff is a Manager or Owner
-  const isManager = selectedStaff?.role === 'Manager';
-  const isOwner = selectedStaff?.role === 'Owner';
-  
-  // Handle rank change
-  const handleRankChange = (newRank: string) => {
-    // Validate the rank is allowed for this role
-    if (!validateRoleRankCombination(selectedStaff.role, newRank)) {
-      toast({
-        title: "Invalid Rank",
-        description: `Only '${isOwner ? 'Owner' : isManager ? 'Manager' : ''}' rank is allowed for the ${selectedStaff.role} role.`,
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    setRank(newRank);
-    selectedStaff.rank = newRank;
-  };
+  const isManager = selectedStaff.role === 'Manager';
+  const isOwner = selectedStaff.role === 'Owner';
   
   // Get rank options based on staff role
   const getRankOptions = () => {
@@ -132,26 +113,46 @@ const StaffMetricsEditor: React.FC<StaffMetricsEditorProps> = ({
     }
   };
   
+  // Handle rank change
+  const handleRankChange = (newRank: string) => {
+    if (isOwner) return; // Prevent rank change for Owners
+    setRank(newRank);
+    selectedStaff.rank = newRank;
+  };
+  
+  // Decide if we should show remove button for Owners (with extra warning)
+  const handleRemoveStaffClick = () => {
+    if (isOwner) {
+      const confirmDelete = window.confirm("Are you sure? This will remove the top-level Owner privileges and glow from this profile.");
+      if (confirmDelete) {
+        onRemoveStaff();
+      }
+    } else {
+      onRemoveStaff();
+    }
+  };
+  
+  // Get appropriate grade display text based on role
+  const getGradeDisplayText = (role: StaffRole, letterGrade: string) => {
+    if (role === 'Owner') {
+      return 'SSS+';
+    } else if (role === 'Manager') {
+      return 'Immeasurable';
+    }
+    return letterGrade;
+  };
+  
   return (
     <div className="col-span-2">
       <div className="cyber-panel h-[600px] overflow-y-auto">
         <div className="flex items-center gap-4 mb-6">
           <div className="relative">
             {isOwner && (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <div className="absolute -top-5 left-1/2 transform -translate-x-1/2 text-amber-400 animate-pulse z-10">
-                      <Crown size={18} className="fill-amber-400" />
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent side="top">
-                    <p>Owner of the Realm</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+              <div className="absolute -top-5 left-1/2 transform -translate-x-1/2 text-amber-400 animate-pulse z-10" title="Owner">
+                👑
+              </div>
             )}
-            <div className={`w-16 h-16 ${isOwner ? 'rounded-none' : 'rounded-md'} overflow-hidden cyber-border ${isOwner ? 'shadow-[0_0_12px_rgba(255,0,0,0.7)]' : ''}`}>
+            <div className={`w-16 h-16 rounded-md overflow-hidden cyber-border ${isOwner ? 'shadow-[0_0_12px_rgba(255,0,0,0.7)]' : ''}`}>
               <Avatar className="w-full h-full">
                 <AvatarImage 
                   src={getAvatarUrl(selectedStaff.avatar)} 
@@ -176,20 +177,25 @@ const StaffMetricsEditor: React.FC<StaffMetricsEditorProps> = ({
               <span className={`${isOwner ? 'text-red-500 font-bold' : isManager ? 'text-purple-400' : 'text-cyber-cyan'}`}>
                 {selectedStaff.role}
               </span>
-              <div className="w-full max-w-xs">
-                <Select 
-                  value={rank}
-                  onValueChange={handleRankChange}
-                  defaultValue={rank || undefined}
-                >
-                  <SelectTrigger className="bg-cyber-black border border-cyber-cyan/40 text-white h-7 text-xs py-0">
-                    <SelectValue placeholder="Select rank" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-cyber-black border border-cyber-cyan text-white">
-                    {getRankOptions()}
-                  </SelectContent>
-                </Select>
-              </div>
+              {isOwner ? (
+                <div className="text-red-400 ml-2">Owner</div>
+              ) : (
+                <div className="w-full max-w-xs">
+                  <Select 
+                    value={rank}
+                    onValueChange={handleRankChange}
+                    defaultValue={rank || undefined}
+                    disabled={isOwner} // Disable select for Owners
+                  >
+                    <SelectTrigger className="bg-cyber-black border border-cyber-cyan/40 text-white h-7 text-xs py-0">
+                      <SelectValue placeholder="Select rank" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-cyber-black border border-cyber-cyan text-white">
+                      {getRankOptions()}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -201,7 +207,7 @@ const StaffMetricsEditor: React.FC<StaffMetricsEditorProps> = ({
             const gradeColorClass = getGradeColorClass(metric.letterGrade);
             
             // Display different grade text based on role
-            const gradeDisplayText = (selectedStaff.role === 'Owner' || selectedStaff.role === 'Manager') ? 'SSS+' : metric.letterGrade;
+            const gradeDisplayText = getGradeDisplayText(selectedStaff.role, metric.letterGrade);
             
             return (
               <div key={key} className="space-y-1">
@@ -224,7 +230,7 @@ const StaffMetricsEditor: React.FC<StaffMetricsEditorProps> = ({
                     disabled={isOwner || isManager}
                   />
                   <span className="text-cyber-cyan font-mono w-20 text-right">
-                    {isOwner || isManager ? 'SSS+' : metric.score.toFixed(1)}
+                    {isOwner ? 'SSS+' : isManager ? 'Immeasurable' : metric.score.toFixed(1)}
                   </span>
                 </div>
               </div>
@@ -234,7 +240,7 @@ const StaffMetricsEditor: React.FC<StaffMetricsEditorProps> = ({
         
         <div className="flex gap-4 justify-between">
           <button 
-            onClick={onRemoveStaff}
+            onClick={handleRemoveStaffClick}
             className="cyber-button-danger"
           >
             Remove Staff

@@ -1,6 +1,6 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { StaffMember, StaffRole, ManagerMetrics, OwnerMetrics, ROLE_CONSTANTS, enforceRoleRankCombination } from '@/types/staff';
+import { StaffMember, StaffRole, ManagerMetrics, OwnerMetrics } from '@/types/staff';
 import { transformToStaffMember, transformToDatabase } from '../staffTransforms';
 import { createImmeasurableMetrics } from '../staffGrading';
 
@@ -9,17 +9,12 @@ export const createStaffMember = async (data: Omit<StaffMember, 'id'>) => {
   try {
     console.log(`createStaffMember: Adding new ${data.role} - ${data.name}`);
     
-    // Apply role-rank enforcement
-    const enforcedData = enforceRoleRankCombination(data) as Omit<StaffMember, 'id'>;
-    
     // Set default rank based on role if not provided
-    let staffData = { ...enforcedData } as StaffMember;
+    let staffData = { ...data } as StaffMember;
     
     // Force Owner rank for Owner role regardless of what was provided
     if (staffData.role === 'Owner') {
       staffData.rank = 'Owner';
-      staffData.overallGrade = 'SSS+';
-      console.log(`createStaffMember: Enforcing Owner rank and SSS+ grade for ${staffData.name}`);
     } else if (!staffData.rank) {
       if (staffData.role === 'Moderator') {
         staffData.rank = 'Trial Mod';
@@ -34,8 +29,8 @@ export const createStaffMember = async (data: Omit<StaffMember, 'id'>) => {
     if (staffData.role === 'Manager') {
       // Replace metrics with immeasurable ones - properly cast to the correct type
       staffData.metrics = createImmeasurableMetrics(staffData.role) as unknown as ManagerMetrics;
-      // Set SSS+ overall grade for Manager
-      staffData.overallGrade = 'SSS+';
+      // Set Immeasurable overall grade
+      staffData.overallGrade = 'Immeasurable';
     } else if (staffData.role === 'Owner') {
       // Replace metrics with Owner-specific ones - properly cast to the correct type
       staffData.metrics = createImmeasurableMetrics(staffData.role) as unknown as OwnerMetrics;
@@ -91,27 +86,19 @@ export const createStaffMember = async (data: Omit<StaffMember, 'id'>) => {
       if (error) throw error;
       result = newStaff?.[0];
     } else if (data.role === 'Manager' || data.role === 'Owner') {
-      // CRITICAL FIX: Store both Manager and Owner in the managers table, but maintain their distinct roles
-      // For Owner role, ensure the role field is explicitly set to 'Owner'
+      // Store both Manager and Owner in the managers table, but maintain their distinct roles
+      // For Owner role, ensure the rank is always "Owner"
       if (data.role === 'Owner') {
-        dbData.role = 'Owner'; // Explicitly set role field
         dbData.rank = 'Owner';
         dbData.overall_grade = 'SSS+';
-        console.log("Creating Owner with explicit role field:", dbData.role);
-      } else {
-        dbData.role = 'Manager'; // Explicitly set role field for Manager too
       }
       
       const { data: newStaff, error } = await supabase
         .from('managers')
         .insert([dbData])
         .select();
-      if (error) {
-        console.error("Error inserting manager/owner:", error);
-        throw error;
-      }
+      if (error) throw error;
       result = newStaff?.[0];
-      console.log("Inserted manager/owner result:", result);
     }
 
     if (!result) {
@@ -133,7 +120,6 @@ export const createStaffMember = async (data: Omit<StaffMember, 'id'>) => {
       transformedResult.role = 'Owner';
       transformedResult.rank = 'Owner';
       transformedResult.overallGrade = 'SSS+';
-      console.log("Returning Owner with role preserved:", transformedResult.role);
     }
     
     return transformedResult;

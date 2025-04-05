@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getStaffMemberById } from '@/services/staff';
@@ -97,12 +98,7 @@ const StaffDetailPage: React.FC = () => {
   }
 
   // Check if the staff is an Owner for special styling
-  const isOwner = staff?.role === 'Owner';
-  const isManager = staff?.role === 'Manager';
-
-  // For display purposes
-  const displayOverallGrade = isOwner || isManager ? 'SSS+' : staff?.overallGrade;
-  const displayOverallScore = isOwner || isManager ? 'Immeasurable' : staff?.overallScore.toFixed(1);
+  const isOwner = staff.role === 'Owner';
 
   return (
     <div className="container mx-auto p-4 min-h-screen">
@@ -150,13 +146,13 @@ const StaffDetailPage: React.FC = () => {
                 <div className="mt-2 flex items-center">
                   <span className="mr-2">Overall Grade:</span>
                   <span className={`letter-grade text-lg ${isOwner ? 'grade-sss' : ''}`}>
-                    {displayOverallGrade}
+                    {isOwner ? 'SSS+' : staff.overallGrade}
                   </span>
                 </div>
                 <div className="mt-1">
                   <span className="mr-2">Score:</span>
                   <span className="text-cyber-cyan font-bold">
-                    {displayOverallScore}
+                    {isOwner ? 'Immeasurable' : staff.overallScore.toFixed(1)}
                   </span>
                 </div>
               </div>

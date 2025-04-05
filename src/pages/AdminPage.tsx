@@ -104,12 +104,6 @@ const AdminPage: React.FC = () => {
     // Apply sorting with Owner always at top
     filtered.sort(sortStaffWithOwnerFirst);
     
-    // Log for debugging
-    console.log(`Filtered staff: ${filtered.length} members`);
-    if (filtered.some(s => s.role === 'Owner')) {
-      console.log("Owner is present in the filtered list");
-    }
-    
     setFilteredStaff(filtered);
   }, [allStaff, searchTerm, filterRole, sortBy, sortAsc, loading]);
   
@@ -164,7 +158,7 @@ const AdminPage: React.FC = () => {
       const staffToSave = {
         ...selectedStaff,
         overallScore: 10,
-        overallGrade: 'SSS+' as LetterGrade // Always SSS+ for Manager and Owner
+        overallGrade: 'SSS+' as LetterGrade
       };
       
       // For Owner, ensure rank is always "Owner"
@@ -213,7 +207,7 @@ const AdminPage: React.FC = () => {
     // Special handling for Managers and Owners
     if (newStaffData.role === 'Manager' || newStaffData.role === 'Owner') {
       newStaffData.overallScore = 10;
-      newStaffData.overallGrade = 'SSS+' as LetterGrade; // Always SSS+ for Manager and Owner
+      newStaffData.overallGrade = 'SSS+' as LetterGrade;
     }
     
     // For Owner role, ensure rank is "Owner"

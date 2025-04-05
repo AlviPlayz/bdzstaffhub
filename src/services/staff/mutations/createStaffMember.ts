@@ -33,7 +33,7 @@ export const createStaffMember = async (data: Omit<StaffMember, 'id'>) => {
     if (staffData.role === ROLE_CONSTANTS.MANAGER.ROLE) {
       // Replace metrics with immeasurable ones - properly cast to the correct type
       staffData.metrics = createImmeasurableMetrics(staffData.role) as unknown as ManagerMetrics;
-      // Set Immeasurable overall grade
+      // Set SSS+ overall grade for Manager
       staffData.overallGrade = ROLE_CONSTANTS.MANAGER.GRADE;
     } else if (staffData.role === ROLE_CONSTANTS.OWNER.ROLE) {
       // Replace metrics with Owner-specific ones - properly cast to the correct type

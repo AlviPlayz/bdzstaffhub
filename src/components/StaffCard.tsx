@@ -55,12 +55,10 @@ const StaffCard: React.FC<StaffCardProps> = ({ staff, compact = false }) => {
     return overallScore.toFixed(1);
   }, [role, overallScore, isOwner, isManager]);
   
-  // Special handling for Manager/Owner grades
+  // Special handling for Manager/Owner grades - always show SSS+ for overall grade
   const displayGrade = React.useMemo(() => {
-    if (isOwner) {
-      return ROLE_CONSTANTS.OWNER.GRADE;
-    } else if (isManager) {
-      return ROLE_CONSTANTS.MANAGER.GRADE;
+    if (isOwner || isManager) {
+      return 'SSS+'; // Changed from Immeasurable to SSS+ for both Owner and Manager
     }
     return overallGrade;
   }, [role, overallGrade, isOwner, isManager]);

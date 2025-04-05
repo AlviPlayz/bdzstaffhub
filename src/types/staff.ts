@@ -62,7 +62,7 @@ export const ROLE_CONSTANTS = {
   MANAGER: {
     ROLE: 'Manager' as const,
     RANK: 'Manager' as const,
-    GRADE: 'Immeasurable' as const
+    GRADE: 'SSS+' as const
   }
 };
 

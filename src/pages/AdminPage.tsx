@@ -158,7 +158,7 @@ const AdminPage: React.FC = () => {
       const staffToSave = {
         ...selectedStaff,
         overallScore: 10,
-        overallGrade: 'SSS+' as LetterGrade
+        overallGrade: 'SSS+' as LetterGrade // Always SSS+ for Manager and Owner
       };
       
       // For Owner, ensure rank is always "Owner"
@@ -207,7 +207,7 @@ const AdminPage: React.FC = () => {
     // Special handling for Managers and Owners
     if (newStaffData.role === 'Manager' || newStaffData.role === 'Owner') {
       newStaffData.overallScore = 10;
-      newStaffData.overallGrade = 'SSS+' as LetterGrade;
+      newStaffData.overallGrade = 'SSS+' as LetterGrade; // Always SSS+ for Manager and Owner
     }
     
     // For Owner role, ensure rank is "Owner"

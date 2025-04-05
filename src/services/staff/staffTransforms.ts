@@ -5,14 +5,11 @@ import { calculateLetterGrade } from './staffGrading';
 export const createMetric = (name: string, score: number, role?: StaffRole): PerformanceMetric => {
   // For Manager and Owner roles, set special scores
   if (role === 'Manager' || role === 'Owner') {
-    // Special handling for Owner role
-    const letterGrade = role === 'Owner' ? 'SSS+' : 'Immeasurable';
-    
     return {
       id: name.toLowerCase().replace(/\s+/g, '-'),
       name,
       score: 10, // Maximum score for display purposes
-      letterGrade: letterGrade as LetterGrade
+      letterGrade: 'Immeasurable' as LetterGrade // Individual metrics remain Immeasurable
     };
   }
   
@@ -116,11 +113,11 @@ export const transformToStaffMember = (row: any, role: StaffRole): StaffMember =
   if (role === 'Manager') {
     // Manager specific overall grading
     overallScore = 10;
-    overallGrade = 'Immeasurable';
+    overallGrade = 'SSS+'; // Changed from 'Immeasurable' to 'SSS+'
   } else if (role === 'Owner') {
     // Owner specific overall grading - distinct from Manager
     overallScore = 10;
-    overallGrade = 'SSS+';
+    overallGrade = 'SSS+'; // Always 'SSS+' for Owner
   } else {
     // Regular score calculation for other roles
     const metricEntries = Object.values(metrics);
@@ -189,13 +186,10 @@ export const transformToDatabase = (staff: StaffMember): any => {
   // Force Owner rank for Owner role
   if (staff.role === 'Owner') {
     dbObject.rank = 'Owner';
-  }
-
-  // Set overall_grade based on role
-  if (staff.role === 'Owner') {
-    dbObject.overall_grade = 'SSS+';
+    dbObject.overall_grade = 'SSS+'; // Ensure SSS+ grade for Owner in database
   } else if (staff.role === 'Manager') {
-    dbObject.overall_grade = 'Immeasurable';
+    dbObject.rank = 'Manager';
+    dbObject.overall_grade = 'SSS+'; // Ensure SSS+ grade for Manager in database
   } else {
     dbObject.overall_grade = staff.overallGrade;
   }

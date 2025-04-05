@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { LetterGrade, PerformanceMetric } from '@/types/staff';
 import { getGradeColorClass } from '@/utils/gradeUtils';
@@ -17,7 +16,9 @@ const PerformanceBar: React.FC<PerformanceBarProps> = ({ metric, staffRole }) =>
   // Special handling for Manager/Owner roles
   const isManagerOrOwner = staffRole === 'Manager' || staffRole === 'Owner';
   const displayScore = isManagerOrOwner ? 'Immeasurable' : score.toFixed(1);
-  const displayGrade = isManagerOrOwner ? 'SSS+' : letterGrade;
+  
+  // For category-level metrics, keep showing "Immeasurable" for Manager/Owner
+  const displayGrade = isManagerOrOwner ? 'Immeasurable' : letterGrade;
   
   // Add animation delay effect
   useEffect(() => {
@@ -34,7 +35,7 @@ const PerformanceBar: React.FC<PerformanceBarProps> = ({ metric, staffRole }) =>
         <span className="text-sm font-digital text-cyber-cyan cyber-text-glow">{name}</span>
         <div className="flex items-center gap-2">
           <span className="text-sm font-mono">{displayScore}</span>
-          <span className={`${getGradeColorClass(isManagerOrOwner ? 'SSS+' : letterGrade)} letter-grade`}>
+          <span className={`${getGradeColorClass(displayGrade)} letter-grade`}>
             {displayGrade}
           </span>
         </div>

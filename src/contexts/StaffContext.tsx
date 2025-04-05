@@ -69,18 +69,11 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           staff.avatar = '/placeholder.svg';
         }
         
-        // CRITICAL FIX: Ensure Owner role is properly identified and preserved during categorization
         if (staff.role === 'Moderator') {
           mods.push(staff);
         } else if (staff.role === 'Builder') {
           builds.push(staff);
         } else if (staff.role === 'Manager' || staff.role === 'Owner') {
-          // If the role is Owner, ensure it remains Owner when added to managers list
-          if (staff.role === 'Owner') {
-            staff.role = 'Owner'; // Explicitly preserve role
-            staff.rank = 'Owner';
-            staff.overallGrade = 'SSS+';
-          }
           mgrs.push(staff);
         }
       });
@@ -134,26 +127,15 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // Update a staff member
   const updateStaffMember = useCallback(async (updatedMember: StaffMember) => {
     try {
-      // CRITICAL FIX: Preserve Owner role during update
-      const isOwner = updatedMember.role === 'Owner';
-      
       // Ensure the rank is properly set before updating
       if (!updatedMember.rank) {
         if (updatedMember.role === 'Moderator') {
           updatedMember.rank = 'Trial Mod';
         } else if (updatedMember.role === 'Builder') {
           updatedMember.rank = 'Trial Builder';
-        } else if (isOwner) {
-          updatedMember.rank = 'Owner';
         } else {
           updatedMember.rank = 'Manager';
         }
-      }
-      
-      // For Owner role, always ensure appropriate values
-      if (isOwner) {
-        updatedMember.rank = 'Owner';
-        updatedMember.overallGrade = 'SSS+';
       }
       
       const result = await staffService.updateStaffMember(updatedMember);
@@ -170,19 +152,10 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           newData.builders = prev.builders.map(builder => 
             builder.id === updatedMember.id ? updatedMember : builder
           );
-        } else if (updatedMember.role === 'Manager' || isOwner) {
-          // CRITICAL FIX: Ensure Owner role is not lost during state updates
-          if (isOwner) {
-            // Make sure we're updating with the Owner role preserved
-            const ownerMember = {...updatedMember, role: 'Owner', rank: 'Owner', overallGrade: 'SSS+'};
-            newData.managers = prev.managers.map(manager => 
-              manager.id === updatedMember.id ? ownerMember : manager
-            );
-          } else {
-            newData.managers = prev.managers.map(manager => 
-              manager.id === updatedMember.id ? updatedMember : manager
-            );
-          }
+        } else if (updatedMember.role === 'Manager' || updatedMember.role === 'Owner') {
+          newData.managers = prev.managers.map(manager => 
+            manager.id === updatedMember.id ? updatedMember : manager
+          );
         }
         
         return newData;
@@ -210,27 +183,15 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     try {
       console.log("Adding new staff member:", newMember.name, newMember.role);
       
-      // CRITICAL FIX: Preserve Owner role during creation
-      const isOwner = newMember.role === 'Owner';
-      
       // Ensure rank is set
       if (!newMember.rank) {
         if (newMember.role === 'Moderator') {
           newMember.rank = 'Trial Mod';
         } else if (newMember.role === 'Builder') {
           newMember.rank = 'Trial Builder';
-        } else if (isOwner) {
-          newMember.rank = 'Owner';
         } else {
           newMember.rank = 'Manager';
         }
-      }
-      
-      // Special handling for Owner role
-      if (isOwner) {
-        newMember.rank = 'Owner';
-        // @ts-ignore - TypeScript won't allow setting overallGrade on Omit type
-        newMember.overallGrade = 'SSS+';
       }
       
       const result = await staffService.createStaffMember(newMember);
@@ -245,13 +206,6 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           } else if (result.role === 'Builder') {
             newData.builders = [...prev.builders, result];
           } else if (result.role === 'Manager' || result.role === 'Owner') {
-            // CRITICAL FIX: If Owner, ensure role is preserved in state
-            if (result.role === 'Owner') {
-              // Make sure role, rank, and grade are set correctly
-              result.role = 'Owner';
-              result.rank = 'Owner';
-              result.overallGrade = 'SSS+';
-            }
             newData.managers = [...prev.managers, result];
           }
           

@@ -25,16 +25,15 @@ export const createStaffMember = async (data: Omit<StaffMember, 'id'>) => {
       }
     }
     
-    // Handle metrics based on role
-    if (staffData.role === 'Manager') {
+    // For Managers and Owners, ensure they have proper metrics
+    if (staffData.role === 'Manager' || staffData.role === 'Owner') {
       // Replace metrics with immeasurable ones - properly cast to the correct type
-      staffData.metrics = createImmeasurableMetrics(staffData.role) as unknown as ManagerMetrics;
-      // Set Immeasurable overall grade
-      staffData.overallGrade = 'Immeasurable';
-    } else if (staffData.role === 'Owner') {
-      // Replace metrics with Owner-specific ones - properly cast to the correct type
-      staffData.metrics = createImmeasurableMetrics(staffData.role) as unknown as OwnerMetrics;
-      // Set SSS+ overall grade for Owner
+      if (staffData.role === 'Manager') {
+        staffData.metrics = createImmeasurableMetrics(staffData.role) as unknown as ManagerMetrics;
+      } else {
+        staffData.metrics = createImmeasurableMetrics(staffData.role) as unknown as OwnerMetrics;
+      }
+      // Set SSS+ overall grade
       staffData.overallGrade = 'SSS+';
     }
     
@@ -86,11 +85,9 @@ export const createStaffMember = async (data: Omit<StaffMember, 'id'>) => {
       if (error) throw error;
       result = newStaff?.[0];
     } else if (data.role === 'Manager' || data.role === 'Owner') {
-      // Store both Manager and Owner in the managers table, but maintain their distinct roles
       // For Owner role, ensure the rank is always "Owner"
       if (data.role === 'Owner') {
         dbData.rank = 'Owner';
-        dbData.overall_grade = 'SSS+';
       }
       
       const { data: newStaff, error } = await supabase
@@ -107,19 +104,28 @@ export const createStaffMember = async (data: Omit<StaffMember, 'id'>) => {
 
     console.log("createStaffMember: Staff member created with ID", result.id);
     
-    // Transform the result back to a StaffMember - ensure role is preserved
+    // Transform the result back to a StaffMember before returning
     const transformedResult = transformToStaffMember(result, data.role);
+    
+    // For Managers and Owners, ensure they have immeasurable metrics
+    if (data.role === 'Manager' || data.role === 'Owner') {
+      // Cast to the proper type based on role
+      if (data.role === 'Manager') {
+        transformedResult.metrics = createImmeasurableMetrics(data.role) as unknown as ManagerMetrics;
+      } else {
+        transformedResult.metrics = createImmeasurableMetrics(data.role) as unknown as OwnerMetrics;
+      }
+      transformedResult.overallGrade = 'SSS+';
+    }
     
     // Make sure the avatar URL is preserved
     if (data.avatar && data.avatar !== '/placeholder.svg') {
       transformedResult.avatar = data.avatar;
     }
     
-    // Re-ensure Owner's role is preserved in the returned object
+    // Ensure Owner's rank is preserved in the returned object
     if (data.role === 'Owner') {
-      transformedResult.role = 'Owner';
       transformedResult.rank = 'Owner';
-      transformedResult.overallGrade = 'SSS+';
     }
     
     return transformedResult;

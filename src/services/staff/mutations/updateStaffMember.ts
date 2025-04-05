@@ -31,7 +31,7 @@ export const updateStaffMember = async (staff: StaffMember) => {
       staffToUpdate.overallGrade = 'Immeasurable';
     } else if (isOwner) {
       // Cast to the proper type based on role - Owner has special metrics
-      staffToUpdate.metrics = createImmeasurableMetrics(staffToUpdate.role) as unknown as OwnerMetrics;
+      staffToUpdate.metrics = createImmeasurableMetrics('Owner') as unknown as OwnerMetrics;
       staffToUpdate.overallGrade = 'SSS+';
     }
     

@@ -77,7 +77,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         } else if (staff.role === 'Manager' || staff.role === 'Owner') {
           // If the role is Owner, ensure it remains Owner when added to managers list
           if (staff.role === 'Owner') {
-            staff.role = 'Owner'; // Explicitly preserve role
+            // Ensure the role stays as a valid StaffRole type
             staff.rank = 'Owner';
             staff.overallGrade = 'SSS+';
           }
@@ -174,7 +174,12 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           // CRITICAL FIX: Ensure Owner role is not lost during state updates
           if (isOwner) {
             // Make sure we're updating with the Owner role preserved
-            const ownerMember = {...updatedMember, role: 'Owner', rank: 'Owner', overallGrade: 'SSS+'};
+            const ownerMember: StaffMember = {
+              ...updatedMember,
+              role: 'Owner',
+              rank: 'Owner',
+              overallGrade: 'SSS+'
+            };
             newData.managers = prev.managers.map(manager => 
               manager.id === updatedMember.id ? ownerMember : manager
             );
@@ -248,11 +253,16 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             // CRITICAL FIX: If Owner, ensure role is preserved in state
             if (result.role === 'Owner') {
               // Make sure role, rank, and grade are set correctly
-              result.role = 'Owner';
-              result.rank = 'Owner';
-              result.overallGrade = 'SSS+';
+              const ownerResult: StaffMember = {
+                ...result,
+                role: 'Owner',
+                rank: 'Owner',
+                overallGrade: 'SSS+'
+              };
+              newData.managers = [...prev.managers, ownerResult];
+            } else {
+              newData.managers = [...prev.managers, result];
             }
-            newData.managers = [...prev.managers, result];
           }
           
           return newData;

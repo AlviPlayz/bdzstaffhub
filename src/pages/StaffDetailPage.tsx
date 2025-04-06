@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getStaffMemberById } from '@/services/staff';
@@ -7,6 +8,8 @@ import PerformanceBar from '@/components/PerformanceBar';
 import LoadingState from '@/components/LoadingState';
 import { ArrowLeft } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import PerformanceHistory from '@/components/PerformanceHistory';
+
 const StaffDetailPage: React.FC = () => {
   const {
     id
@@ -18,6 +21,7 @@ const StaffDetailPage: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [imageError, setImageError] = useState(false);
+
   useEffect(() => {
     const fetchStaffDetails = async () => {
       try {
@@ -41,6 +45,7 @@ const StaffDetailPage: React.FC = () => {
     };
     fetchStaffDetails();
   }, [id]);
+  
   const handleGoBack = () => {
     navigate(-1);
   };
@@ -67,9 +72,11 @@ const StaffDetailPage: React.FC = () => {
       return avatarUrl;
     }
   };
+
   if (loading) {
     return <LoadingState message="Loading staff details..." />;
   }
+
   if (error || !staff) {
     return <div className="container mx-auto p-4 min-h-screen">
         <div className="cyber-panel p-8 text-center">
@@ -83,8 +90,14 @@ const StaffDetailPage: React.FC = () => {
       </div>;
   }
 
-  // Check if the staff is an Owner for special styling
-  const isOwner = staff.role === 'Owner';
+  // Check if the staff is a Manager (Owner) for special styling
+  const isOwner = staff.role === 'Manager' && staff.rank === 'Owner';
+  const isManager = staff.role === 'Manager';
+
+  // Display values for managers
+  const displayScore = isManager ? 'Immeasurable' : staff.overallScore.toFixed(1);
+  const displayGrade = isManager ? 'SSS+' : staff.overallGrade;
+
   return <div className="container mx-auto p-4 min-h-screen">
       <button onClick={handleGoBack} className="cyber-button mb-4 flex items-center gap-2">
         <ArrowLeft size={16} />
@@ -114,19 +127,21 @@ const StaffDetailPage: React.FC = () => {
               <div>
                 <h2 className="text-2xl font-digital text-white">{staff.name}</h2>
                 <div className="flex items-center gap-2">
-                  <p className={`${isOwner ? 'text-red-500 font-bold' : 'text-cyber-cyan'}`}>{staff.role}</p>
-                  {staff.rank && <span className={`text-sm ${isOwner ? 'text-red-400' : 'text-cyber-yellow'}`}>({staff.rank})</span>}
+                  <p className={`${isOwner ? 'text-red-500 font-bold' : 'text-cyber-cyan'}`}>
+                    {staff.role}{isOwner ? ' (Owner)' : ''}
+                  </p>
+                  {!isOwner && staff.rank && <span className={`text-sm ${isManager ? 'text-red-400' : 'text-cyber-yellow'}`}>({staff.rank})</span>}
                 </div>
                 <div className="mt-2 flex items-center">
                   <span className="mr-2">Overall Grade:</span>
-                  <span className={`letter-grade text-lg ${isOwner ? 'grade-sss' : ''}`}>
-                    {isOwner ? 'SSS+' : staff.overallGrade}
+                  <span className={`letter-grade text-lg ${isOwner || isManager ? 'grade-sss' : ''}`}>
+                    {displayGrade}
                   </span>
                 </div>
                 <div className="mt-1">
                   <span className="mr-2">Score:</span>
                   <span className="text-cyber-cyan font-bold">
-                    {isOwner ? 'Immeasurable' : staff.overallScore.toFixed(1)}
+                    {displayScore}
                   </span>
                 </div>
               </div>
@@ -137,18 +152,17 @@ const StaffDetailPage: React.FC = () => {
           <div className="cyber-panel">
             <h2 className="text-xl font-digital text-cyber-cyan mb-4">Performance Metrics</h2>
             <div className="max-h-[400px] overflow-y-auto pr-2 space-y-3">
-              {Object.entries(staff.metrics).map(([key, metric]) => <PerformanceBar key={key} metric={metric} staffRole={staff.role} />)}
+              {Object.entries(staff.metrics).map(([key, metric]) => <PerformanceBar key={key} metric={metric} staffRole={staff.role} staffRank={staff.rank} />)}
             </div>
           </div>
         </div>
         
         <div className="cyber-panel">
           <h2 className="text-xl font-digital text-cyber-cyan mb-4">Performance History</h2>
-          <div className="p-4 bg-cyber-darkpurple/50 rounded">
-            <p className="text-white"></p>
-          </div>
+          <PerformanceHistory staffId={staff.id} staffRole={staff.role} staffRank={staff.rank} />
         </div>
       </div>
     </div>;
 };
+
 export default StaffDetailPage;

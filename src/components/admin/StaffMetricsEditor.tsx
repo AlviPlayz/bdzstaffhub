@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { StaffMember, StaffRole } from '@/types/staff';
+import { StaffMember } from '@/types/staff';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { 
   Select,
@@ -82,9 +82,9 @@ const StaffMetricsEditor: React.FC<StaffMetricsEditorProps> = ({
     }
   };
   
-  // Check if the staff is a Manager or Owner
-  const isManagerOrOwner = selectedStaff.role === 'Manager' || selectedStaff.role === 'Owner';
-  const isOwner = selectedStaff.role === 'Owner';
+  // Check if the staff is a Manager or Manager(Owner)
+  const isManager = selectedStaff.role === 'Manager';
+  const isOwner = isManager && selectedStaff.rank === 'Owner';
   
   // Get rank options based on staff role
   const getRankOptions = () => {
@@ -107,8 +107,13 @@ const StaffMetricsEditor: React.FC<StaffMetricsEditorProps> = ({
           <SelectItem value="Trial Builder">Trial Builder</SelectItem>
         </>
       );
-    } else if (role === 'Owner') {
-      return <SelectItem value="Owner">Owner</SelectItem>;
+    } else if (role === 'Manager') {
+      return (
+        <>
+          <SelectItem value="Owner">Owner</SelectItem>
+          <SelectItem value="Manager">Manager</SelectItem>
+        </>
+      );
     } else {
       return <SelectItem value="Manager">Manager</SelectItem>;
     }
@@ -116,22 +121,12 @@ const StaffMetricsEditor: React.FC<StaffMetricsEditorProps> = ({
   
   // Handle rank change
   const handleRankChange = (newRank: string) => {
-    if (isOwner) return; // Prevent rank change for Owners
     setRank(newRank);
     selectedStaff.rank = newRank;
   };
   
-  // Decide if we should show remove button for Owners (with extra warning)
-  const handleRemoveStaffClick = () => {
-    if (isOwner) {
-      const confirmDelete = window.confirm("Are you sure? This will remove the top-level Owner privileges and glow from this profile.");
-      if (confirmDelete) {
-        onRemoveStaff();
-      }
-    } else {
-      onRemoveStaff();
-    }
-  };
+  // Display role name
+  const displayRole = isOwner ? 'Manager (Owner)' : selectedStaff.role;
   
   return (
     <div className="col-span-2">
@@ -166,27 +161,22 @@ const StaffMetricsEditor: React.FC<StaffMetricsEditorProps> = ({
             </div>
             <div className="flex items-center gap-2">
               <span className={`${isOwner ? 'text-red-500 font-bold' : 'text-cyber-cyan'}`}>
-                {selectedStaff.role}
+                {displayRole}
               </span>
-              {isOwner ? (
-                <div className="text-red-400 ml-2">Owner</div>
-              ) : (
-                <div className="w-full max-w-xs">
-                  <Select 
-                    value={rank}
-                    onValueChange={handleRankChange}
-                    defaultValue={rank || undefined}
-                    disabled={isOwner} // Disable select for Owners
-                  >
-                    <SelectTrigger className="bg-cyber-black border border-cyber-cyan/40 text-white h-7 text-xs py-0">
-                      <SelectValue placeholder="Select rank" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-cyber-black border border-cyber-cyan text-white">
-                      {getRankOptions()}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
+              <div className="w-full max-w-xs">
+                <Select 
+                  value={rank}
+                  onValueChange={handleRankChange}
+                  defaultValue={rank || undefined}
+                >
+                  <SelectTrigger className="bg-cyber-black border border-cyber-cyan/40 text-white h-7 text-xs py-0">
+                    <SelectValue placeholder="Select rank" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-cyber-black border border-cyber-cyan text-white">
+                    {getRankOptions()}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
         </div>
@@ -195,14 +185,14 @@ const StaffMetricsEditor: React.FC<StaffMetricsEditorProps> = ({
           <h3 className="text-xl font-digital text-cyber-cyan border-b border-cyber-cyan/30 pb-2">Performance Metrics</h3>
           
           {Object.entries(selectedStaff.metrics).map(([key, metric]) => {
-            const gradeColorClass = getGradeColorClass(metric.letterGrade);
+            const gradeColorClass = getGradeColorClass(isManager ? 'SSS+' : metric.letterGrade);
             
             return (
               <div key={key} className="space-y-1">
                 <div className="flex justify-between items-center">
                   <label htmlFor={`metric-${key}`} className="text-white">{metric.name}</label>
                   <span className={`letter-grade text-sm ${gradeColorClass}`}>
-                    {isManagerOrOwner ? 'Immeasurable' : metric.letterGrade}
+                    {isManager ? 'SSS+' : metric.letterGrade}
                   </span>
                 </div>
                 <div className="flex gap-4 items-center">
@@ -212,13 +202,13 @@ const StaffMetricsEditor: React.FC<StaffMetricsEditorProps> = ({
                     min="0"
                     max="10"
                     step="0.1"
-                    value={isManagerOrOwner ? 10 : metric.score}
-                    onChange={(e) => !isManagerOrOwner && onScoreChange(key, parseFloat(e.target.value))}
+                    value={isManager ? 10 : metric.score}
+                    onChange={(e) => !isManager && onScoreChange(key, parseFloat(e.target.value))}
                     className="w-full cyber-range"
-                    disabled={isManagerOrOwner}
+                    disabled={isManager}
                   />
                   <span className="text-cyber-cyan font-mono w-20 text-right">
-                    {isManagerOrOwner ? 'Immeasurable' : metric.score.toFixed(1)}
+                    {isManager ? 'Immeasurable' : metric.score.toFixed(1)}
                   </span>
                 </div>
               </div>
@@ -228,7 +218,7 @@ const StaffMetricsEditor: React.FC<StaffMetricsEditorProps> = ({
         
         <div className="flex gap-4 justify-between">
           <button 
-            onClick={handleRemoveStaffClick}
+            onClick={onRemoveStaff}
             className="cyber-button-danger"
           >
             Remove Staff

@@ -51,7 +51,7 @@ export const createImmeasurableMetric = (name: string): PerformanceMetric => {
     id: name.toLowerCase().replace(/\s+/g, '-'),
     name,
     score: 10, // We'll give it a 10 score for calculation purposes
-    letterGrade: 'Immeasurable'
+    letterGrade: 'SSS+'
   };
 };
 

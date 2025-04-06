@@ -15,8 +15,9 @@ const StaffCard: React.FC<StaffCardProps> = ({ staff, compact = false }) => {
   const { name, role, rank, avatar, overallScore, overallGrade } = staff;
   const [imageError, setImageError] = useState(false);
   
-  // Check if the staff is an Owner for special styling
-  const isOwner = role === 'Owner';
+  // Check if the staff is an Manager (Owner) for special styling
+  const isManager = role === 'Manager';
+  const isOwner = isManager && rank === 'Owner';
   
   // Extract initials for avatar fallback
   const getInitials = (name: string) => {
@@ -45,23 +46,29 @@ const StaffCard: React.FC<StaffCardProps> = ({ staff, compact = false }) => {
     }
   }, [avatar, imageError]);
   
-  // Special handling for Manager/Owner scores
+  // Special handling for Manager scores
   const displayScore = React.useMemo(() => {
-    if (role === 'Manager' || role === 'Owner') {
+    if (isManager) {
       return 'Immeasurable';
     }
     return overallScore.toFixed(1);
-  }, [role, overallScore]);
+  }, [isManager, overallScore]);
   
-  // Special handling for Manager/Owner grades
+  // Special handling for Manager grades
   const displayGrade = React.useMemo(() => {
-    if (role === 'Owner') {
-      return 'SSS+';
-    } else if (role === 'Manager') {
+    if (isManager) {
       return 'SSS+';
     }
     return overallGrade;
-  }, [role, overallGrade]);
+  }, [isManager, overallGrade]);
+  
+  // Display role name
+  const displayRole = React.useMemo(() => {
+    if (isOwner) {
+      return 'Manager (Owner)';
+    }
+    return role;
+  }, [isOwner, role]);
   
   return (
     <div className={`cyber-panel rounded-lg transition-all duration-300 hover:scale-[1.02] ${isOwner ? 'border-red-500 shadow-[0_0_15px_rgba(255,0,0,0.7)]' : ''}`}>
@@ -98,8 +105,8 @@ const StaffCard: React.FC<StaffCardProps> = ({ staff, compact = false }) => {
           <h3 className="text-lg font-digital text-white">{name}</h3>
           <div className="flex justify-between items-center">
             <div>
-              <p className={`text-sm ${isOwner ? 'text-red-500 font-bold' : 'text-cyber-cyan'}`}>{role}</p>
-              {rank && <p className={`text-xs ${isOwner ? 'text-red-400' : 'text-cyber-yellow'}`}>{rank}</p>}
+              <p className={`text-sm ${isOwner ? 'text-red-500 font-bold' : 'text-cyber-cyan'}`}>{displayRole}</p>
+              {!isOwner && rank && <p className={`text-xs ${isManager ? 'text-red-400' : 'text-cyber-yellow'}`}>{rank}</p>}
             </div>
             <p className="text-sm">
               Score: <span className="text-cyber-cyan font-bold">

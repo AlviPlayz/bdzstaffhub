@@ -8,8 +8,8 @@ import { LetterGrade, StaffRole, PerformanceMetric } from '@/types/staff';
  * @returns Letter grade
  */
 export const calculateLetterGrade = (score: number, role?: StaffRole): LetterGrade => {
-  // Special case for managers and owners
-  if (role === 'Manager' || role === 'Owner') {
+  // Special case for managers 
+  if (role === 'Manager') {
     return 'SSS+';
   }
   
@@ -34,14 +34,14 @@ export const createImmeasurableMetric = (name: string): PerformanceMetric => {
     id: name.toLowerCase().replace(/\s+/g, '-'),
     name,
     score: 10, // We'll give it a 10 score for calculation purposes
-    letterGrade: 'Immeasurable'
+    letterGrade: 'SSS+'
   };
 };
 
 /**
- * Create a set of Immeasurable metrics for Manager or Owner
+ * Create a set of Immeasurable metrics for Manager
  */
-export const createImmeasurableMetrics = (role: 'Manager' | 'Owner'): Record<string, PerformanceMetric> => {
+export const createImmeasurableMetrics = (role: 'Manager'): Record<string, PerformanceMetric> => {
   return {
     // Moderator metrics
     responsiveness: createImmeasurableMetric('Responsiveness'),

@@ -19,9 +19,9 @@ export const updateStaffMember = async (staff: StaffMember) => {
     if (staff.role === 'Manager' || staff.role === 'Owner') {
       // Cast to the proper type based on role
       if (staff.role === 'Manager') {
-        staff.metrics = createImmeasurableMetrics(staff.role) as unknown as ManagerMetrics;
+        staff.metrics = createImmeasurableMetrics('Manager') as unknown as ManagerMetrics;
       } else {
-        staff.metrics = createImmeasurableMetrics(staff.role) as unknown as OwnerMetrics;
+        staff.metrics = createImmeasurableMetrics('Owner') as unknown as OwnerMetrics;
       }
       staff.overallGrade = 'SSS+';
     }

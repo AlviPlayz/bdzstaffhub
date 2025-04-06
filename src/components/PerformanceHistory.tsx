@@ -3,12 +3,12 @@ import React, { useState, useEffect } from 'react';
 import { format, subDays, isSaturday } from 'date-fns';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import PerformanceBar from './PerformanceBar';
-import { PerformanceMetric, StaffRole } from '@/types/staff';
+import { PerformanceMetric, StaffRole, LetterGrade } from '@/types/staff';
 
 interface HistoryEntry {
   date: Date;
   metrics: Record<string, PerformanceMetric>;
-  overallGrade: string;
+  overallGrade: LetterGrade;
   overallScore: number | string;
   rank: string;
 }
@@ -108,7 +108,7 @@ const PerformanceHistory: React.FC<PerformanceHistoryProps> = ({ staffId, staffR
   }, [staffId, staffRole, isManager, isOwner, staffRank]);
   
   // Helper function to calculate letter grade
-  function calculateLetterGrade(score: number): string {
+  function calculateLetterGrade(score: number): LetterGrade {
     if (score >= 9.5) return 'S+';
     if (score >= 8.5) return 'S';
     if (score >= 7.5) return 'A+';

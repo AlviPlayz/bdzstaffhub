@@ -1,5 +1,5 @@
 
-import { LetterGrade, PerformanceMetric, StaffMember } from "@/types/staff";
+import { LetterGrade, PerformanceMetric, StaffMember, StaffRole } from "@/types/staff";
 
 export const calculateLetterGrade = (score: number): LetterGrade => {
   if (score >= 9.5) return 'S+';
@@ -56,7 +56,7 @@ export const createImmeasurableMetric = (name: string): PerformanceMetric => {
 };
 
 // Create a set of Immeasurable metrics for Owner or high-level manager
-export const createImmeasurableManagerMetrics = (): Record<string, PerformanceMetric> => {
+export const createImmeasurableManagerMetrics = (role?: StaffRole): Record<string, PerformanceMetric> => {
   return {
     // Moderator metrics
     responsiveness: createImmeasurableMetric('Responsiveness'),

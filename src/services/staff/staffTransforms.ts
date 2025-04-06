@@ -1,5 +1,5 @@
 
-import { StaffMember, StaffRole, LetterGrade, ModeratorMetrics, BuilderMetrics, ManagerMetrics } from '@/types/staff';
+import { StaffMember, StaffRole, LetterGrade, ModeratorMetrics, BuilderMetrics, ManagerMetrics, PerformanceMetric } from '@/types/staff';
 import { calculateLetterGrade } from './staffGrading';
 
 // Function to create a performance metric

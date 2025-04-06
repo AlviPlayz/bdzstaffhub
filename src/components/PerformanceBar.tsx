@@ -16,8 +16,8 @@ const PerformanceBar: React.FC<PerformanceBarProps> = ({ metric, staffRole, staf
   const [isVisible, setIsVisible] = useState(false);
   
   // Special handling for Manager roles
-  const isManager = staffRole === 'Manager';
-  const isOwner = isManager && staffRank === 'Owner';
+  const isManager = staffRole === 'Manager' || staffRole === 'Owner';
+  const isOwner = staffRole === 'Owner' || (staffRole === 'Manager' && staffRank === 'Owner');
   const displayScore = isManager ? 'Immeasurable' : score.toFixed(1);
   const displayGrade = isManager ? 'SSS+' : letterGrade;
   

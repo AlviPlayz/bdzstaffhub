@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getStaffMemberById } from '@/services/staff';
@@ -7,7 +8,6 @@ import PerformanceBar from '@/components/PerformanceBar';
 import LoadingState from '@/components/LoadingState';
 import { ArrowLeft } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import PerformanceHistory from '@/components/PerformanceHistory';
 
 const StaffDetailPage: React.FC = () => {
   const {
@@ -105,7 +105,7 @@ const StaffDetailPage: React.FC = () => {
       
       <h1 className="text-3xl cyber-text-glow font-digital text-white mb-6">Staff Details</h1>
       
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-6">
         <div>
           {/* Staff basic info */}
           <div className={`cyber-panel mb-6 ${isOwner ? 'border-red-500 shadow-[0_0_15px_rgba(255,0,0,0.7)]' : ''}`}>
@@ -154,11 +154,6 @@ const StaffDetailPage: React.FC = () => {
               {Object.entries(staff.metrics).map(([key, metric]) => <PerformanceBar key={key} metric={metric} staffRole={staff.role} staffRank={staff.rank} />)}
             </div>
           </div>
-        </div>
-        
-        <div className="cyber-panel">
-          <h2 className="text-xl font-digital text-cyber-cyan mb-4">Performance History</h2>
-          <PerformanceHistory staffId={staff.id} staffRole={staff.role} staffRank={staff.rank} />
         </div>
       </div>
     </div>;

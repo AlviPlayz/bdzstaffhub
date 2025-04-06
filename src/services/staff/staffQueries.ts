@@ -1,7 +1,6 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { StaffMember } from '@/types/staff';
-import { transformToStaffMember } from './staffTransforms';
+import { transformToStaffMember } from './transforms';
 
 // Function to fetch all staff members
 export const getAllStaff = async (): Promise<StaffMember[]> => {

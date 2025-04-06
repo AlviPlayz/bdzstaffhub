@@ -1,7 +1,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { StaffMember, StaffRole, LetterGrade, ModeratorMetrics, BuilderMetrics, ManagerMetrics, OwnerMetrics } from '@/types/staff';
-import { transformToStaffMember, transformToDatabase } from '../staffTransforms';
+import { transformToStaffMember, transformToDatabase } from '../transforms';
 import { createImmeasurableMetrics } from '../staffGrading';
 
 // Function to add a new staff member

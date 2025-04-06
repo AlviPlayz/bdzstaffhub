@@ -1,7 +1,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { StaffMember } from '@/types/staff';
-import { transformToStaffMember } from './staffTransforms';
+import { transformToStaffMember } from './transforms';
 import { calculateLetterGrade } from './staffGrading';
 
 // Function to get staff member by ID

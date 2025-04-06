@@ -1,7 +1,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { StaffMember, StaffRole, ManagerMetrics, OwnerMetrics } from '@/types/staff';
-import { transformToDatabase } from '../staffTransforms';
+import { transformToDatabase } from '../transforms';
 import { cleanupPreviousImages } from '../staffImageService';
 import { createImmeasurableMetrics } from '../staffGrading';
 

@@ -15,7 +15,7 @@ const PerformanceBar: React.FC<PerformanceBarProps> = ({ metric, staffRole, staf
   const percentage = Math.min(Math.max(0, score * 10), 100); // Convert 0-10 score to 0-100 percentage
   const [isVisible, setIsVisible] = useState(false);
   
-  // Special handling for Manager roles
+  // Special handling for Manager and Owner roles
   const isManager = staffRole === 'Manager' || staffRole === 'Owner';
   const isOwner = staffRole === 'Owner' || (staffRole === 'Manager' && staffRank === 'Owner');
   const displayScore = isManager ? 'Immeasurable' : score.toFixed(1);
@@ -57,4 +57,4 @@ const PerformanceBar: React.FC<PerformanceBarProps> = ({ metric, staffRole, staf
   );
 };
 
-export default PerformanceBar;
+export default React.memo(PerformanceBar);

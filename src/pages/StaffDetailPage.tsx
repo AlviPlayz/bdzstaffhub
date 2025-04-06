@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getStaffMemberById } from '@/services/staff';
@@ -91,8 +90,8 @@ const StaffDetailPage: React.FC = () => {
   }
 
   // Check if the staff is a Manager (Owner) for special styling
-  const isOwner = staff.role === 'Manager' && staff.rank === 'Owner';
-  const isManager = staff.role === 'Manager';
+  const isOwner = staff.role === 'Owner' || (staff.role === 'Manager' && staff.rank === 'Owner');
+  const isManager = staff.role === 'Manager' || staff.role === 'Owner';
 
   // Display values for managers
   const displayScore = isManager ? 'Immeasurable' : staff.overallScore.toFixed(1);
@@ -134,7 +133,7 @@ const StaffDetailPage: React.FC = () => {
                 </div>
                 <div className="mt-2 flex items-center">
                   <span className="mr-2">Overall Grade:</span>
-                  <span className={`letter-grade text-lg ${isOwner || isManager ? 'grade-sss' : ''}`}>
+                  <span className={`letter-grade text-lg ${isManager ? 'grade-sss' : ''}`}>
                     {displayGrade}
                   </span>
                 </div>

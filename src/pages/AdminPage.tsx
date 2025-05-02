@@ -14,7 +14,7 @@ import ApiTokenManager from '@/components/admin/ApiTokenManager';
 import ActionWeightsManager from '@/components/admin/ActionWeightsManager';
 
 const AdminPage: React.FC = () => {
-  const { allStaff, updateStaffMember, removeStaffMember, loading, error, refreshStaffData } = useStaff();
+  const { allStaff, updateStaffMember, removeStaffMember, loading, error, refreshStaffData, addStaffMember } = useStaff();
   const [selectedStaff, setSelectedStaff] = useState<StaffMember | null>(null);
   const [filteredStaff, setFilteredStaff] = useState<StaffMember[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>('');
@@ -103,7 +103,8 @@ const AdminPage: React.FC = () => {
     setShowRemoveDialog(false);
   };
   
-  const handleAddStaffComplete = () => {
+  const handleAddStaffComplete = async (newStaffData: Omit<StaffMember, 'id'>) => {
+    await addStaffMember(newStaffData);
     setShowAddForm(false);
     refreshStaffData();
   };

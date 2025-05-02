@@ -6,11 +6,11 @@ import { Input } from '@/components/ui/input';
 
 interface AdminToolbarProps {
   searchTerm: string;
-  filterRole: StaffRole | 'All';
+  filterRole: StaffRole | 'all';
   sortBy: 'name' | 'role' | 'score';
   sortAsc: boolean;
   onSearchChange: (value: string) => void;
-  onFilterChange: (value: StaffRole | 'All') => void;
+  onFilterChange: (value: StaffRole | 'all') => void;
   onSortChange: (value: 'name' | 'role' | 'score') => void;
   onSortDirectionChange: () => void;
   onAddStaffClick: () => void;
@@ -48,10 +48,10 @@ const AdminToolbar: React.FC<AdminToolbarProps> = ({
             <Filter size={16} className="text-cyber-cyan/70" />
             <select 
               value={filterRole} 
-              onChange={(e) => onFilterChange(e.target.value as StaffRole | 'All')}
+              onChange={(e) => onFilterChange(e.target.value as StaffRole | 'all')}
               className="bg-transparent text-white border-0 focus:ring-0 py-2"
             >
-              <option value="All">All Roles</option>
+              <option value="all">All Roles</option>
               <option value="Moderator">Moderators</option>
               <option value="Builder">Builders</option>
               <option value="Manager">Managers</option>

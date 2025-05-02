@@ -1,13 +1,17 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getStaffMemberById } from '@/services/staff';
+import { getStaffMemberById, getStaffScore } from '@/services/staff';
 import { StaffMember } from '@/types/staff';
 import StaffCard from '@/components/StaffCard';
 import PerformanceBar from '@/components/PerformanceBar';
 import LoadingState from '@/components/LoadingState';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, BarChart, Activity } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { ScoreEvent } from '@/services/staff/events/types';
+import ScoreEventsList from '@/components/staff/ScoreEventsList';
+import { supabase } from '@/integrations/supabase/client';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const StaffDetailPage: React.FC = () => {
   const {
@@ -20,6 +24,9 @@ const StaffDetailPage: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [imageError, setImageError] = useState(false);
+  const [scoreEvents, setScoreEvents] = useState<ScoreEvent[]>([]);
+  const [activeTab, setActiveTab] = useState<string>('metrics');
+  const [dynamicScore, setDynamicScore] = useState<number>(0);
 
   useEffect(() => {
     const fetchStaffDetails = async () => {
@@ -32,6 +39,15 @@ const StaffDetailPage: React.FC = () => {
         const staffData = await getStaffMemberById(id);
         if (staffData) {
           setStaff(staffData);
+          
+          // Fetch dynamic score
+          if (staffData.role !== 'Manager' && staffData.role !== 'Owner') {
+            const score = await getStaffScore(id);
+            setDynamicScore(score);
+          }
+          
+          // Fetch score events
+          fetchScoreEvents(id);
         } else {
           setError('Staff member not found');
         }
@@ -43,7 +59,49 @@ const StaffDetailPage: React.FC = () => {
       }
     };
     fetchStaffDetails();
+    
+    // Set up realtime subscription for score events
+    const channel = supabase
+      .channel('public:score_events')
+      .on('postgres_changes', { 
+        event: 'INSERT', 
+        schema: 'public', 
+        table: 'score_events',
+        filter: `staff_id=eq.${id}`
+      }, (payload) => {
+        console.log('New score event received:', payload);
+        setScoreEvents(prev => [payload.new as ScoreEvent, ...prev]);
+        
+        // Update dynamic score
+        if (staff?.role !== 'Manager' && staff?.role !== 'Owner') {
+          getStaffScore(id!).then(score => setDynamicScore(score));
+        }
+      })
+      .subscribe();
+      
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [id]);
+  
+  const fetchScoreEvents = async (staffId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('score_events')
+        .select('*')
+        .eq('staff_id', staffId)
+        .order('created_at', { ascending: false });
+        
+      if (error) {
+        console.error('Error fetching score events:', error);
+        return;
+      }
+      
+      setScoreEvents(data as ScoreEvent[]);
+    } catch (err) {
+      console.error('Exception fetching score events:', err);
+    }
+  };
   
   const handleGoBack = () => {
     navigate(-1);
@@ -94,7 +152,7 @@ const StaffDetailPage: React.FC = () => {
   const isManager = staff.role === 'Manager' || staff.role === 'Owner';
 
   // Display values for managers
-  const displayScore = isManager ? 'Immeasurable' : staff.overallScore.toFixed(1);
+  const displayScore = isManager ? 'Immeasurable' : dynamicScore.toFixed(1);
   const displayGrade = isManager ? 'SSS+' : staff.overallGrade;
 
   return <div className="container mx-auto p-4 min-h-screen">
@@ -147,12 +205,32 @@ const StaffDetailPage: React.FC = () => {
             </div>
           </div>
           
-          {/* Performance Metrics */}
+          {/* Performance Tabs */}
           <div className="cyber-panel">
-            <h2 className="text-xl font-digital text-cyber-cyan mb-4">Performance Metrics</h2>
-            <div className="max-h-[400px] overflow-y-auto pr-2 space-y-3">
-              {Object.entries(staff.metrics).map(([key, metric]) => <PerformanceBar key={key} metric={metric} staffRole={staff.role} staffRank={staff.rank} />)}
-            </div>
+            <Tabs defaultValue="metrics" value={activeTab} onValueChange={setActiveTab}>
+              <TabsList className="grid grid-cols-2 mb-4">
+                <TabsTrigger value="metrics" className="flex items-center gap-2 text-base">
+                  <BarChart size={16} /> Performance Metrics
+                </TabsTrigger>
+                <TabsTrigger value="activity" className="flex items-center gap-2 text-base">
+                  <Activity size={16} /> Activity Log
+                </TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="metrics">
+                <h2 className="text-xl font-digital text-cyber-cyan mb-4">Performance Metrics</h2>
+                <div className="max-h-[400px] overflow-y-auto pr-2 space-y-3">
+                  {Object.entries(staff.metrics).map(([key, metric]) => (
+                    <PerformanceBar key={key} metric={metric} staffRole={staff.role} staffRank={staff.rank} />
+                  ))}
+                </div>
+              </TabsContent>
+              
+              <TabsContent value="activity">
+                <h2 className="text-xl font-digital text-cyber-cyan mb-4">Activity Log</h2>
+                <ScoreEventsList events={scoreEvents} />
+              </TabsContent>
+            </Tabs>
           </div>
         </div>
       </div>

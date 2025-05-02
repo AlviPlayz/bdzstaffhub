@@ -12,6 +12,15 @@ import { uploadStaffImage, updateStaffAvatar, getStaffImageUrl, initializeStaffI
 import { subscribeToRealTimeUpdates } from './staffRealtimeService';
 import { calculateLetterGrade } from './staffGrading';
 
+// Import events services
+import {
+  createScoreEvent,
+  getStaffScore,
+  verifyApiToken,
+  getActionWeight,
+  subscribeToScoreEvents
+} from './events';
+
 export {
   // Queries
   getAllStaff,
@@ -36,4 +45,11 @@ export {
   
   // Realtime
   subscribeToRealTimeUpdates,
+  subscribeToScoreEvents,
+  
+  // Events system
+  createScoreEvent,
+  getStaffScore,
+  verifyApiToken,
+  getActionWeight
 };

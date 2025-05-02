@@ -1,340 +1,210 @@
 
 import React, { useState, useEffect } from 'react';
 import { useStaff } from '@/contexts/StaffContext';
-import { useAuth } from '@/contexts/AuthContext';
-import { StaffMember, StaffRole, LetterGrade } from '@/types/staff';
-import { toast } from '@/hooks/use-toast';
-import LoadingState from '@/components/LoadingState';
-import { useNavigate } from 'react-router-dom';
-import { calculateLetterGrade } from '@/services/staff/staffGrading';
-
-// Import refactored components
+import { StaffMember } from '@/types/staff';
 import StaffList from '@/components/admin/StaffList';
 import StaffMetricsEditor from '@/components/admin/StaffMetricsEditor';
 import AdminToolbar from '@/components/admin/AdminToolbar';
+import LoadingState from '@/components/LoadingState';
 import AddStaffForm from '@/components/admin/AddStaffForm';
 import RemoveStaffDialog from '@/components/admin/RemoveStaffDialog';
-import AdminAccessModal from '@/components/AdminAccessModal';
+import { CheckCircle, UserPlus, Database, Key } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import ApiTokenManager from '@/components/admin/ApiTokenManager';
+import ActionWeightsManager from '@/components/admin/ActionWeightsManager';
 
 const AdminPage: React.FC = () => {
-  const { isAdmin } = useAuth();
-  const { allStaff, updateStaffMember, addStaffMember, removeStaffMember, loading } = useStaff();
-  const navigate = useNavigate();
-  
-  // State management
-  const [searchTerm, setSearchTerm] = useState('');
+  const { allStaff, updateStaffMember, removeStaffMember, loading, error, refreshStaffData } = useStaff();
   const [selectedStaff, setSelectedStaff] = useState<StaffMember | null>(null);
   const [filteredStaff, setFilteredStaff] = useState<StaffMember[]>([]);
-  const [showAddStaffModal, setShowAddStaffModal] = useState(false);
-  const [showRemoveConfirmation, setShowRemoveConfirmation] = useState(false);
-  const [filterRole, setFilterRole] = useState<StaffRole | 'All'>('All');
-  const [sortBy, setSortBy] = useState<'name' | 'role' | 'score'>('name');
-  const [sortAsc, setSortAsc] = useState(true);
-  const [hasAdminAccess, setHasAdminAccess] = useState(false);
-  const [showAdminAccessModal, setShowAdminAccessModal] = useState(true);
+  const [searchTerm, setSearchTerm] = useState<string>('');
+  const [filterRole, setFilterRole] = useState<string>('all');
+  const [showAddForm, setShowAddForm] = useState<boolean>(false);
+  const [showRemoveDialog, setShowRemoveDialog] = useState<boolean>(false);
+  const [currentTab, setCurrentTab] = useState<string>('staff');
   
-  // Check for admin access on initial load using sessionStorage
   useEffect(() => {
-    const adminAccess = sessionStorage.getItem('adminAccess') === 'true';
-    setHasAdminAccess(adminAccess);
-    
-    // If they already have access, don't show the login modal
-    if (adminAccess) {
-      setShowAdminAccessModal(false);
-    }
-  }, []);
-  
-  // Redirect non-admin users back to the homepage if they close the modal without entering code
-  useEffect(() => {
-    if (!hasAdminAccess && !showAdminAccessModal) {
-      navigate('/');
-    }
-  }, [hasAdminAccess, navigate, showAdminAccessModal]);
-  
-  // Filter and sort staff based on criteria
-  useEffect(() => {
-    if (loading) return;
-    
+    // Apply filters to staff list
     let filtered = [...allStaff];
     
-    // Apply search filter
+    // Apply search term filter
     if (searchTerm) {
+      const search = searchTerm.toLowerCase();
       filtered = filtered.filter(staff => 
-        staff.name.toLowerCase().includes(searchTerm.toLowerCase())
+        staff.name.toLowerCase().includes(search) || 
+        (staff.rank && staff.rank.toLowerCase().includes(search))
       );
     }
     
     // Apply role filter
-    if (filterRole !== 'All') {
+    if (filterRole !== 'all') {
       filtered = filtered.filter(staff => staff.role === filterRole);
     }
     
-    // First sort to ensure Owners are always at the top
-    filtered.sort((a, b) => {
-      if (a.role === 'Owner' && b.role !== 'Owner') return -1;
-      if (a.role !== 'Owner' && b.role === 'Owner') return 1;
-      
-      // Then sort Managers next if not already sorted by role
-      if (a.role === 'Manager' && b.role !== 'Manager' && b.role !== 'Owner') return -1;
-      if (a.role !== 'Manager' && a.role !== 'Owner' && b.role === 'Manager') return 1;
-      
-      // Then apply the regular sorting
-      if (sortBy === 'name') {
-        return sortAsc 
-          ? a.name.localeCompare(b.name) 
-          : b.name.localeCompare(a.name);
-      } else if (sortBy === 'role') {
-        return sortAsc 
-          ? a.role.localeCompare(b.role) 
-          : b.role.localeCompare(a.role);
-      } else {
-        // For managers, always put them at top or bottom depending on sort direction
-        if (a.role === 'Manager' && b.role !== 'Owner' && b.role !== 'Manager') {
-          return sortAsc ? 1 : -1;
-        }
-        if (b.role === 'Manager' && a.role !== 'Owner' && a.role !== 'Manager') {
-          return sortAsc ? -1 : 1;
-        }
-        return sortAsc 
-          ? a.overallScore - b.overallScore 
-          : b.overallScore - a.overallScore;
-      }
-    });
-    
     setFilteredStaff(filtered);
-  }, [allStaff, searchTerm, filterRole, sortBy, sortAsc, loading]);
-  
-  const toggleSort = (newSortBy: 'name' | 'role' | 'score') => {
-    if (sortBy === newSortBy) {
-      setSortAsc(!sortAsc);
-    } else {
-      setSortBy(newSortBy);
-      setSortAsc(true);
-    }
-  };
+  }, [allStaff, searchTerm, filterRole]);
   
   const handleStaffSelect = (staff: StaffMember) => {
-    console.log("Selected staff:", staff.name, staff.role, staff.avatar);
     setSelectedStaff(staff);
   };
   
   const handleScoreChange = (metricKey: string, newScore: number) => {
     if (!selectedStaff) return;
     
-    // Skip score changes for Managers and Owners
-    if (selectedStaff.role === 'Manager' || selectedStaff.role === 'Owner') {
-      console.log("Managers/Owners have fixed scores - not changing");
-      return;
-    }
-    
-    // Create a safe score between 0 and 10
-    const safeScore = Math.min(Math.max(0, newScore), 10);
-    
-    // Create a deep copy of the staff member
-    const updatedStaff = {
-      ...selectedStaff,
-      metrics: {
-        ...selectedStaff.metrics,
-        [metricKey]: {
-          ...selectedStaff.metrics[metricKey as keyof typeof selectedStaff.metrics],
-          score: safeScore,
-          letterGrade: calculateLetterGrade(safeScore, selectedStaff.role)
-        }
+    setSelectedStaff(prevStaff => {
+      if (!prevStaff) return null;
+      
+      const updatedMetrics = { ...prevStaff.metrics };
+      if (metricKey in updatedMetrics) {
+        (updatedMetrics as any)[metricKey] = { 
+          ...(updatedMetrics as any)[metricKey],
+          score: newScore
+        };
       }
-    };
-    
-    // Update local state for immediate UI feedback
-    setSelectedStaff(updatedStaff);
+      
+      return {
+        ...prevStaff,
+        metrics: updatedMetrics
+      };
+    });
   };
   
-  const saveChanges = () => {
+  const handleSaveChanges = async () => {
     if (!selectedStaff) return;
     
-    // Special handling for Managers and Owners
-    if (selectedStaff.role === 'Manager' || selectedStaff.role === 'Owner') {
-      const staffToSave = {
-        ...selectedStaff,
-        overallScore: 10,
-        overallGrade: 'SSS+' as LetterGrade
-      };
-      
-      // For Owner, ensure rank is always "Owner"
-      if (selectedStaff.role === 'Owner') {
-        staffToSave.rank = 'Owner';
-      }
-      
-      updateStaffMember(staffToSave);
-      toast({
-        title: "Changes Saved",
-        description: `${selectedStaff.name}'s information has been updated.`,
-      });
-      return;
-    }
-    
-    // Calculate the new overall score for other roles
-    const metricValues = Object.values(selectedStaff.metrics);
-    const totalScore = metricValues.reduce((sum, metric) => sum + metric.score, 0);
-    const average = parseFloat((totalScore / metricValues.length).toFixed(1));
-    
-    // Determine the new overall grade
-    const overallGrade = calculateLetterGrade(average, selectedStaff.role);
-    
-    // Create the final staff object to save
-    const staffToSave = {
-      ...selectedStaff,
-      overallScore: average,
-      overallGrade
-    };
-    
-    updateStaffMember(staffToSave);
-    toast({
-      title: "Changes Saved",
-      description: `${selectedStaff.name}'s performance metrics have been updated.`,
-    });
+    await updateStaffMember(selectedStaff);
   };
   
-  const handleAddStaff = async (newStaffData: Omit<StaffMember, 'id'>) => {
-    console.log("Adding new staff member:", newStaffData.name, newStaffData.role);
-    
-    // Ensure avatar URL is set
-    if (!newStaffData.avatar || newStaffData.avatar === '') {
-      newStaffData.avatar = '/placeholder.svg';
+  const handleCancelEdit = () => {
+    if (selectedStaff) {
+      // Reload the staff data to discard changes
+      const originalStaff = allStaff.find(s => s.id === selectedStaff.id);
+      if (originalStaff) {
+        setSelectedStaff(originalStaff);
+      }
     }
-    
-    // Special handling for Managers and Owners
-    if (newStaffData.role === 'Manager' || newStaffData.role === 'Owner') {
-      newStaffData.overallScore = 10;
-      newStaffData.overallGrade = 'SSS+' as LetterGrade;
-    }
-    
-    // For Owner role, ensure rank is "Owner"
-    if (newStaffData.role === 'Owner') {
-      newStaffData.rank = 'Owner';
-    }
-    
-    await addStaffMember(newStaffData);
-    
-    toast({
-      title: "Staff Added",
-      description: `${newStaffData.name} has been added as a ${newStaffData.role}.`,
-    });
   };
   
   const handleRemoveStaff = () => {
-    if (!selectedStaff) return;
-    
-    removeStaffMember(selectedStaff.id, selectedStaff.role);
-    setSelectedStaff(null);
-    setShowRemoveConfirmation(false);
-    
-    toast({
-      title: "Staff Removed",
-      description: `${selectedStaff.name} has been removed from the system.`,
-    });
-  };
-  
-  const handleAdminAccess = (accessGranted: boolean) => {
-    setHasAdminAccess(accessGranted);
-    setShowAdminAccessModal(false);
-    
-    if (accessGranted) {
-      // Store the access flag in sessionStorage (cleared on tab close/refresh)
-      sessionStorage.setItem('adminAccess', 'true');
-      toast({
-        title: "Access Granted",
-        description: "You now have admin access for this session.",
-      });
-    } else {
-      // If access denied, navigate back to home
-      navigate('/');
+    if (selectedStaff) {
+      setShowRemoveDialog(true);
     }
   };
   
-  const handleLogout = () => {
-    // Clear admin access
-    sessionStorage.removeItem('adminAccess');
-    setHasAdminAccess(false);
-    
-    // Navigate back to home
-    navigate('/');
-    
-    toast({
-      title: "Logged Out",
-      description: "You have been logged out of the admin panel.",
-    });
+  const handleConfirmRemove = async () => {
+    if (selectedStaff) {
+      await removeStaffMember(selectedStaff.id, selectedStaff.role);
+      setSelectedStaff(null);
+      setShowRemoveDialog(false);
+    }
+  };
+  
+  const handleCancelRemove = () => {
+    setShowRemoveDialog(false);
+  };
+  
+  const handleAddStaffComplete = () => {
+    setShowAddForm(false);
+    refreshStaffData();
   };
   
   if (loading) {
-    return <LoadingState message="Loading admin panel..." />;
+    return <LoadingState message="Loading staff data..." />;
   }
   
-  if (!hasAdminAccess) {
+  if (error) {
     return (
-      <AdminAccessModal 
-        isOpen={showAdminAccessModal} 
-        onClose={() => setShowAdminAccessModal(false)}
-        onSuccess={() => handleAdminAccess(true)}
-        onFailure={() => handleAdminAccess(false)}
-      />
+      <div className="container mx-auto p-4">
+        <div className="cyber-panel text-center p-8">
+          <h2 className="text-2xl text-red-500 mb-2">Error</h2>
+          <p className="text-white mb-4">Failed to load staff data. Please try again later.</p>
+          <button 
+            onClick={() => refreshStaffData()}
+            className="cyber-button"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
     );
   }
   
   return (
-    <div className="container mx-auto p-4 min-h-screen">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl cyber-text-glow font-digital text-white">Administrator Panel</h1>
-        <button 
-          onClick={handleLogout}
-          className="cyber-button-danger py-1 px-3 text-sm"
-        >
-          Logout
-        </button>
+    <div className="container mx-auto p-4">
+      <div className="mb-6">
+        <h1 className="text-3xl cyber-text-glow font-digital text-white mb-2">Admin Dashboard</h1>
+        <p className="text-white/60 font-cyber">Manage staff, configure settings, and monitor system activity</p>
       </div>
       
-      {/* Admin Tools */}
-      <AdminToolbar 
-        searchTerm={searchTerm}
-        filterRole={filterRole}
-        sortBy={sortBy}
-        sortAsc={sortAsc}
-        onSearchChange={setSearchTerm}
-        onFilterChange={setFilterRole}
-        onSortChange={toggleSort}
-        onSortDirectionChange={() => setSortAsc(!sortAsc)}
-        onAddStaffClick={() => setShowAddStaffModal(true)}
-      />
-      
-      {/* Main Content */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <StaffList 
-          filteredStaff={filteredStaff}
-          selectedStaff={selectedStaff}
-          onStaffSelect={handleStaffSelect}
-        />
+      <Tabs value={currentTab} onValueChange={setCurrentTab}>
+        <TabsList className="mb-6">
+          <TabsTrigger value="staff" className="flex items-center gap-2">
+            <CheckCircle size={16} /> Staff Management
+          </TabsTrigger>
+          <TabsTrigger value="actions" className="flex items-center gap-2">
+            <Database size={16} /> Action Weights
+          </TabsTrigger>
+          <TabsTrigger value="api" className="flex items-center gap-2">
+            <Key size={16} /> API Tokens
+          </TabsTrigger>
+        </TabsList>
         
-        <StaffMetricsEditor 
-          selectedStaff={selectedStaff}
-          onScoreChange={handleScoreChange}
-          saveChanges={saveChanges}
-          onCancelEdit={() => setSelectedStaff(null)}
-          onRemoveStaff={() => setShowRemoveConfirmation(true)}
-        />
-      </div>
-      
-      {/* Add Staff Modal */}
-      <AddStaffForm 
-        isOpen={showAddStaffModal}
-        onClose={() => setShowAddStaffModal(false)}
-        onAddStaff={handleAddStaff}
-      />
-      
-      {/* Remove Staff Confirmation */}
-      <RemoveStaffDialog 
-        isOpen={showRemoveConfirmation}
-        onClose={() => setShowRemoveConfirmation(false)}
-        onRemove={handleRemoveStaff}
-        staff={selectedStaff}
-      />
+        <TabsContent value="staff">
+          <div className="flex justify-between items-center mb-6">
+            <AdminToolbar 
+              onSearch={setSearchTerm} 
+              onFilterRole={setFilterRole}
+              searchTerm={searchTerm}
+              filterRole={filterRole}
+            />
+            <button 
+              className="cyber-button flex items-center gap-2"
+              onClick={() => setShowAddForm(true)}
+            >
+              <UserPlus size={16} />
+              Add Staff
+            </button>
+          </div>
+          
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <StaffList 
+              filteredStaff={filteredStaff} 
+              selectedStaff={selectedStaff}
+              onStaffSelect={handleStaffSelect}
+            />
+            <StaffMetricsEditor 
+              selectedStaff={selectedStaff}
+              onScoreChange={handleScoreChange}
+              saveChanges={handleSaveChanges}
+              onCancelEdit={handleCancelEdit}
+              onRemoveStaff={handleRemoveStaff}
+            />
+          </div>
+          
+          {showAddForm && (
+            <AddStaffForm 
+              onClose={() => setShowAddForm(false)}
+              onComplete={handleAddStaffComplete}
+            />
+          )}
+          
+          {showRemoveDialog && selectedStaff && (
+            <RemoveStaffDialog
+              staff={selectedStaff}
+              onConfirm={handleConfirmRemove}
+              onCancel={handleCancelRemove}
+            />
+          )}
+        </TabsContent>
+        
+        <TabsContent value="actions">
+          <ActionWeightsManager />
+        </TabsContent>
+        
+        <TabsContent value="api">
+          <ApiTokenManager />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

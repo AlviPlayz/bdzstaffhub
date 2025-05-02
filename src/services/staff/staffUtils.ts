@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { StaffMember } from '@/types/staff';
 import { transformToStaffMember } from './transforms';
 import { calculateLetterGrade } from './staffGrading';
+import { getStaffScore } from './events';
 
 // Function to get staff member by ID
 export const getStaffMemberById = async (staffId: string): Promise<StaffMember | null> => {
@@ -48,21 +49,37 @@ export const getStaffMemberById = async (staffId: string): Promise<StaffMember |
 };
 
 // Function to calculate overall score and grade for a staff member
-export const calculateOverallScoreAndGrade = (staff: StaffMember): { overallScore: number; overallGrade: string } => {
-  // Get metrics
-  const metrics = Object.values(staff.metrics);
+export const calculateOverallScoreAndGrade = async (staff: StaffMember): Promise<{ overallScore: number; overallGrade: string }> => {
+  if (staff.role === 'Manager' || staff.role === 'Owner') {
+    return {
+      overallScore: 10,
+      overallGrade: 'SSS+'
+    };
+  }
   
-  // Calculate average score
-  const totalScore = metrics.reduce((sum, metric) => sum + metric.score, 0);
-  const averageScore = totalScore / metrics.length;
-  
-  // Get letter grade based on score
-  const letterGrade = staff.role === 'Manager' || staff.role === 'Owner'
-    ? 'SSS+'
-    : calculateLetterGrade(averageScore);
-  
-  return {
-    overallScore: parseFloat(averageScore.toFixed(1)),
-    overallGrade: letterGrade
-  };
+  try {
+    // Get dynamic score from events
+    const dynamicScore = await getStaffScore(staff.id);
+    
+    // Get letter grade based on score
+    const letterGrade = calculateLetterGrade(dynamicScore);
+    
+    return {
+      overallScore: parseFloat(dynamicScore.toFixed(1)),
+      overallGrade: letterGrade
+    };
+  } catch (err) {
+    console.error('Error calculating overall score:', err);
+    
+    // Fallback - calculate from metrics
+    const metrics = Object.values(staff.metrics);
+    const totalScore = metrics.reduce((sum, metric) => sum + metric.score, 0);
+    const averageScore = totalScore / metrics.length;
+    const letterGrade = calculateLetterGrade(averageScore);
+    
+    return {
+      overallScore: parseFloat(averageScore.toFixed(1)),
+      overallGrade: letterGrade
+    };
+  }
 };

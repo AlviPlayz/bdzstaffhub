@@ -17,3 +17,20 @@ export interface ActionWeight {
   created_at: string;
   updated_at: string;
 }
+
+export interface ApiToken {
+  id: string;
+  token: string;
+  name: string;
+  source: string;
+  is_active: boolean;
+  created_at: string;
+  last_used_at?: string;
+}
+
+export interface ScoreEventRequest {
+  staffId: string;
+  action: string;
+  source: string;
+  metadata?: Record<string, any>;
+}

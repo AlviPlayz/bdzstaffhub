@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useStaff } from '@/contexts/StaffContext';
-import { StaffMember } from '@/types/staff';
+import { StaffMember, StaffRole } from '@/types/staff';
 import StaffList from '@/components/admin/StaffList';
 import StaffMetricsEditor from '@/components/admin/StaffMetricsEditor';
 import AdminToolbar from '@/components/admin/AdminToolbar';
@@ -18,7 +18,7 @@ const AdminPage: React.FC = () => {
   const [selectedStaff, setSelectedStaff] = useState<StaffMember | null>(null);
   const [filteredStaff, setFilteredStaff] = useState<StaffMember[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>('');
-  const [filterRole, setFilterRole] = useState<string>('all');
+  const [filterRole, setFilterRole] = useState<StaffRole | 'all'>('all');
   const [showAddForm, setShowAddForm] = useState<boolean>(false);
   const [showRemoveDialog, setShowRemoveDialog] = useState<boolean>(false);
   const [currentTab, setCurrentTab] = useState<string>('staff');
@@ -152,18 +152,16 @@ const AdminPage: React.FC = () => {
         <TabsContent value="staff">
           <div className="flex justify-between items-center mb-6">
             <AdminToolbar 
-              onSearch={setSearchTerm} 
-              onFilterRole={setFilterRole}
+              onSearchChange={setSearchTerm} 
+              onFilterChange={setFilterRole}
               searchTerm={searchTerm}
               filterRole={filterRole}
+              sortBy="name"
+              sortAsc={true}
+              onSortChange={(sort) => {/* Handle sort change */}}
+              onSortDirectionChange={() => {/* Handle sort direction */}}
+              onAddStaffClick={() => setShowAddForm(true)}
             />
-            <button 
-              className="cyber-button flex items-center gap-2"
-              onClick={() => setShowAddForm(true)}
-            >
-              <UserPlus size={16} />
-              Add Staff
-            </button>
           </div>
           
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -183,16 +181,18 @@ const AdminPage: React.FC = () => {
           
           {showAddForm && (
             <AddStaffForm 
+              isOpen={showAddForm}
               onClose={() => setShowAddForm(false)}
-              onComplete={handleAddStaffComplete}
+              onAddStaff={handleAddStaffComplete}
             />
           )}
           
           {showRemoveDialog && selectedStaff && (
             <RemoveStaffDialog
+              isOpen={showRemoveDialog}
               staff={selectedStaff}
-              onConfirm={handleConfirmRemove}
-              onCancel={handleCancelRemove}
+              onRemove={handleConfirmRemove}
+              onClose={handleCancelRemove}
             />
           )}
         </TabsContent>
